@@ -1,0 +1,3489 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스타핀볼포커</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --bg2: #161b26;
+    --bg3: #1e2533;
+    --border: #2d3748;
+    --text: #e2e8f0;
+    --muted: #6b7280;
+    --chip-col: #60a5fa;
+    --mult-col: #fb923c;
+    --xmult-col: #c084fc;
+    --gold: #fbbf24;
+    --green: #34d399;
+    --red: #f87171;
+    --heart: #f87171;
+    --diamond: #60a5fa;
+    --club: #34d399;
+    --spade: #c084fc;
+    --pin-normal: #374151;
+    --pin-border: #4b5563;
+    --pin-spring: #065f46;
+    --pin-spring-b: #34d399;
+    --pin-card-h: #7f1d1d;
+    --pin-card-h-b: #f87171;
+    --pin-card-d: #1e3a5f;
+    --pin-card-d-b: #60a5fa;
+    --pin-card-c: #064e3b;
+    --pin-card-c-b: #34d399;
+    --pin-card-s: #3b1f6e;
+    --pin-card-s-b: #c084fc;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* HUD */
+  #hud {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .hud-stat { text-align: center; }
+  .hud-label { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.08em; margin-bottom: 2px; }
+  .hud-val { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; }
+  .hud-val.chips { color: var(--chip-col); }
+  .hud-val.mult { color: var(--mult-col); }
+  .hud-val.score { color: var(--green); }
+  .hud-val.blind { color: var(--gold); font-size: 12px; }
+
+  /* CANVAS */
+  #canvas-wrap {
+    position: relative;
+    flex-shrink: 0;
+    background: var(--bg);
+  }
+  #gameCanvas { display: block; width: 100%; }
+
+  /* HAND */
+  #hand-panel {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    padding: 10px 12px 8px;
+    flex-shrink: 0;
+  }
+  .hand-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .hand-meta-label { font-size: 11px; color: var(--muted); }
+  .best-hand-name { font-size: 12px; font-weight: 700; color: var(--green); font-family: 'Space Mono', monospace; }
+
+  .cards-row {
+    display: flex;
+    gap: 5px;
+    align-items: flex-end;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    justify-content: center;
+  }
+
+  .pcard {
+    width: 36px;
+    height: 52px;
+    border-radius: 5px;
+    background: #f8fafc;
+    border: 1.5px solid #d1d5db;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 2px;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .pcard:hover { transform: translateY(-4px); }
+  .pcard.lit { transform: translateY(-8px); border-width: 2px; }
+  .pcard .cr { font-size: 12px; font-weight: 700; line-height: 1; }
+  .pcard .cs { font-size: 13px; line-height: 1; }
+  .pcard .cr-bot { font-size: 12px; font-weight: 700; line-height: 1; transform: rotate(180deg); }
+  .pcard.heart .cr, .pcard.heart .cr-bot { color: var(--heart); }
+  .pcard.heart .cs { color: var(--heart); }
+  .pcard.diamond .cr, .pcard.diamond .cr-bot { color: var(--diamond); }
+  .pcard.diamond .cs { color: var(--diamond); }
+  .pcard.club .cr, .pcard.club .cr-bot { color: var(--club); }
+  .pcard.club .cs { color: var(--club); }
+  .pcard.spade .cr, .pcard.spade .cr-bot { color: var(--spade); }
+  .pcard.spade .cs { color: var(--spade); }
+  .pcard-slot {
+    width: 36px; height: 52px;
+    border-radius: 5px;
+    background: #161b26;
+    border: 1px dashed #2d3748;
+    flex-shrink: 0;
+  }
+  .eb {
+    position: absolute;
+    bottom: 1px; right: 1px;
+    font-size: 7px; font-weight: 700;
+    padding: 0 2px;
+    border-radius: 2px;
+    font-family: 'Space Mono', monospace;
+  }
+  .eb-bonus { background: #1e3a5f; color: #93c5fd; }
+  .eb-mult  { background: #7f2d1b; color: #fca5a5; }
+  .eb-glass { background: #3b1f6e; color: #d8b4fe; }
+
+  /* PROGRESS BARS */
+  /* JOKER ROW */
+  #joker-panel {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    padding: 7px 12px;
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .joker-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.3;
+  }
+  .joker-chip.active { border-color: var(--xmult-col); color: #e9d5ff; }
+  .joker-chip .jn { font-weight: 700; font-size: 10px; display: block; }
+  .joker-chip .je { font-size: 9px; display: block; opacity: 0.8; }
+
+  /* LAUNCH UI */
+  #gameCanvas { display: block; width: 100%; cursor: crosshair; }
+
+  /* RESULT SCREEN */
+  #result-screen {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: #0d1117ee;
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  #result-screen.show { display: flex; }
+  .result-box {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .res-hand-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--green);
+    margin-bottom: 4px;
+  }
+  .res-cards { display: flex; gap: 5px; margin: 10px 0; flex-wrap: wrap; justify-content: center; }
+  .res-calc { background: var(--bg3); border-radius: 8px; padding: 12px 14px; }
+  .calc-line {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 6px;
+    align-items: center;
+  }
+  .calc-line:last-child { margin-bottom: 0; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px; }
+  .calc-key { color: var(--muted); }
+  .calc-val { font-family: 'Space Mono', monospace; font-weight: 700; }
+  .calc-val.c { color: var(--chip-col); }
+  .calc-val.m { color: var(--mult-col); }
+  .calc-val.xm { color: var(--xmult-col); }
+  .calc-val.final { color: var(--green); font-size: 18px; }
+  .res-miss { font-size: 11px; color: var(--muted); line-height: 1.7; margin-top: 10px; padding: 8px 10px; background: var(--bg3); border-radius: 6px; }
+  .res-miss span { color: var(--xmult-col); font-weight: 700; }
+  .res-btn-row { display: flex; gap: 8px; margin-top: 14px; }
+  .res-btn {
+    flex: 1; padding: 9px; border-radius: 6px;
+    font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+    cursor: pointer; background: transparent;
+    border: 1px solid var(--border); color: var(--muted);
+    transition: background 0.15s;
+  }
+  .res-btn:hover { background: var(--bg3); color: var(--text); }
+  .res-btn.primary { border-color: var(--green); color: var(--green); }
+  .res-btn.primary:hover { background: #064e3b55; }
+
+  /* FLOATING CHIPS */
+  .float-chip {
+    position: absolute;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    pointer-events: none;
+    transition: opacity 0.1s;
+    z-index: 50;
+  }
+
+  /* CARD DROP NOTIF */
+  #card-notif {
+    position: absolute;
+    top: 40px; left: 50%; transform: translateX(-50%);
+    background: #1e3a5f;
+    border: 1px solid #3b82f6;
+    color: #93c5fd;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    z-index: 60;
+    opacity: 0;
+    transition: opacity 0.3s;
+    white-space: nowrap;
+    font-family: 'Space Mono', monospace;
+  }
+  #card-notif.show { opacity: 1; }
+
+  #stage-bar {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 5px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .stage-label { font-size: 10px; color: var(--muted); }
+  .stage-bar-bg { flex: 1; background: var(--bg3); border-radius: 3px; height: 5px; }
+  .stage-bar-fill { height: 5px; border-radius: 3px; background: var(--gold); transition: width 0.4s; }
+  .stage-pct { font-size: 10px; font-family: 'Space Mono', monospace; color: var(--gold); min-width: 40px; text-align: right; }
+
+  /* DECK VIEWER */
+  #deck-screen {
+    display: none; position: absolute; inset: 0;
+    background: #0d1117f0; z-index: 110;
+    flex-direction: column; padding: 14px 12px; overflow-y: auto;
+  }
+  #deck-screen.show { display: flex; }
+  .deck-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-shrink: 0; }
+  .deck-title { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; color: var(--text); }
+  .deck-close { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: 'Space Mono', monospace; font-size: 11px; padding: 5px 12px; cursor: pointer; }
+  .deck-close:hover { background: var(--bg3); color: var(--text); }
+  .deck-suit-label { font-size: 11px; font-weight: 700; margin-bottom: 5px; font-family: 'Space Mono', monospace; }
+  .deck-suit-group { margin-bottom: 10px; flex-shrink: 0; }
+  .deck-cards-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+  .dcard { width: 32px; height: 46px; border-radius: 4px; background: #f8fafc; border: 1.5px solid #d1d5db; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 2px 2px; position: relative; flex-shrink: 0; }
+  .dcard.used { background: #1e2533; border-color: #374151; opacity: 0.4; }
+  .dcard.in-hand { border-width: 2.5px; }
+  .dcard .dr { font-size: 11px; font-weight: 700; line-height: 1; }
+  .dcard .ds { font-size: 12px; line-height: 1; }
+  .dcard.heart .dr, .dcard.heart .ds { color: var(--heart); }
+  .dcard.diamond .dr, .dcard.diamond .ds { color: var(--diamond); }
+  .dcard.club .dr, .dcard.club .ds { color: var(--club); }
+  .dcard.spade .dr, .dcard.spade .ds { color: var(--spade); }
+  .dcard.used .dr, .dcard.used .ds { color: var(--muted); }
+  .dcard .deb { position: absolute; bottom: 1px; right: 1px; font-size: 6px; font-weight: 700; padding: 0 2px; border-radius: 2px; font-family: 'Space Mono', monospace; }
+  .dcard .in-dot { position: absolute; top: 1px; right: 2px; width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+  .deck-stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; flex-shrink: 0; }
+  .dstat { background: var(--bg3); border: 1px solid var(--border); border-radius: 5px; padding: 4px 10px; font-size: 10px; font-family: 'Space Mono', monospace; color: var(--muted); }
+  .dstat span { font-weight: 700; color: var(--text); }
+  .deck-section-title { font-size: 10px; font-weight: 700; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin: 10px 0 6px; flex-shrink: 0; }
+  #deck-btn { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-family: 'Space Mono', monospace; font-size: 10px; padding: 5px 10px; cursor: pointer; white-space: nowrap; }
+  #deck-btn:hover { background: var(--bg3); color: var(--text); }
+  @keyframes feverPulse {
+    from { transform: scale(1);   text-shadow: 0 0 20px #f87171, 0 0 40px #f87171; }
+    to   { transform: scale(1.06); text-shadow: 0 0 36px #f87171, 0 0 72px #fbbf24; }
+  }
+  @keyframes clearPulse {
+    from { transform: scale(1);    text-shadow: 0 0 20px #34d399, 0 0 40px #34d399; }
+    to   { transform: scale(1.07); text-shadow: 0 0 36px #34d399, 0 0 72px #6ee7b7; }
+  }
+  .consumable-chip {
+    background: #422006; border: 1px solid #fbbf24;
+    border-radius: 6px; padding: 4px 10px;
+    font-size: 10px; color: #fde68a; cursor: pointer;
+    font-family: 'Space Mono', monospace; line-height: 1.4;
+    transition: background 0.15s;
+  }
+  .consumable-chip:hover { background: #633806; }
+  .consumable-chip.used { opacity: 0.4; pointer-events: none; border-style: dashed; }
+  .consumable-chip .cn { font-weight: 700; display: block; font-size: 10px; }
+  .consumable-chip .cd { font-size: 9px; opacity: 0.8; display: block; }
+
+  /* SHOP SCREEN */
+  #shop-screen {
+    display: none; position: absolute; inset: 0;
+    background: #0d1117; z-index: 120;
+    flex-direction: column; overflow-y: auto;
+  }
+  #shop-screen.show { display: flex; }
+  .shop-header {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 10px 14px; display: flex; align-items: center;
+    justify-content: space-between; flex-shrink: 0;
+  }
+  .shop-title { font-family: 'Space Mono', monospace; font-size: 14px; font-weight: 700; }
+  .shop-coin {
+    font-family: 'Space Mono', monospace; font-size: 13px;
+    font-weight: 700; color: var(--gold);
+  }
+  .shop-section { padding: 10px 12px 0; flex-shrink: 0; }
+  .shop-section-title {
+    font-size: 10px; font-weight: 700; color: var(--muted);
+    letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 8px;
+  }
+  .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .shop-item {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--border-radius-md); padding: 10px 11px;
+    cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    position: relative;
+  }
+  .shop-item:hover { border-color: var(--gold); background: var(--bg3); }
+  .shop-item.sold { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .shop-item.sold::after {
+    content: 'SOLD'; position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace; font-size: 13px; font-weight: 700;
+    color: var(--muted); background: #0d111788; border-radius: var(--border-radius-md);
+  }
+  .si-tag {
+    font-size: 9px; font-weight: 700; padding: 2px 6px;
+    border-radius: 3px; margin-bottom: 5px; display: inline-block;
+  }
+  .si-tag.joker { background: #3b1f6e; color: #d8b4fe; }
+  .si-tag.pack  { background: #1e3a5f; color: #93c5fd; }
+  .si-tag.planet{ background: #064e3b; color: #6ee7b7; }
+  .si-tag.consumable { background: #422006; color: #fde68a; }
+  .si-name { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+  .si-desc { font-size: 10px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+  .si-price {
+    font-family: 'Space Mono', monospace; font-size: 12px;
+    font-weight: 700; color: var(--gold);
+  }
+  .si-price.cant-afford { color: var(--red); }
+  .shop-actions {
+    padding: 10px 12px 14px; display: flex; gap: 8px; flex-shrink: 0;
+  }
+  .shop-btn {
+    flex: 1; padding: 9px; border-radius: 6px;
+    font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700;
+    cursor: pointer; background: transparent;
+    border: 1px solid var(--border); color: var(--muted);
+    transition: background 0.15s;
+  }
+  .shop-btn:hover { background: var(--bg3); color: var(--text); }
+  .shop-btn.next { border-color: var(--green); color: var(--green); }
+  .shop-btn.next:hover { background: #064e3b55; }
+  .shop-reroll {
+    padding: 6px 12px; border-radius: 5px;
+    font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+    cursor: pointer; background: transparent;
+    border: 1px solid var(--border); color: var(--muted);
+    transition: background 0.15s; margin-left: auto;
+  }
+  .shop-reroll:hover { background: var(--bg3); }
+  .shop-stage-info {
+    margin: 8px 12px; padding: 8px 12px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--border-radius-md);
+    font-size: 11px; color: var(--muted); line-height: 1.7;
+  }
+  .shop-blind-info strong { color: var(--text); font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-stat">
+      <div class="hud-label">CHIPS</div>
+      <div class="hud-val chips" id="hchips">0</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-label">MULT</div>
+      <div class="hud-val mult" id="hmult">×1</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-label">SCORE</div>
+      <div class="hud-val score" id="hscore">0</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-label">스테이지</div>
+      <div class="hud-val blind" id="hstage">1</div>
+    </div>
+    <div class="hud-stat">
+      <div class="hud-label">턴</div>
+      <div class="hud-val" id="hturn" style="color:var(--text)">1 / 3</div>
+    </div>
+  </div>
+
+  <!-- BLIND PROGRESS -->
+  <div id="stage-bar">
+    <div class="stage-label" id="round-name">1라운드</div>
+    <div class="stage-bar-bg"><div class="stage-bar-fill" id="stage-fill" style="width:0%"></div></div>
+    <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+      <div id="turn-dot-1" style="width:8px;height:8px;border-radius:50%;background:var(--chip-col);border:1px solid var(--chip-col)"></div>
+      <div id="turn-dot-2" style="width:8px;height:8px;border-radius:50%;background:var(--bg3);border:1px solid var(--border)"></div>
+      <div id="turn-dot-3" style="width:8px;height:8px;border-radius:50%;background:var(--bg3);border:1px solid var(--border)"></div>
+    </div>
+    <div class="stage-pct" id="stage-pct">0 / 5,000</div>
+  </div>
+
+  <!-- CANVAS -->
+  <div id="canvas-wrap">
+    <canvas id="gameCanvas"></canvas>
+    <div id="card-notif">카드 획득!</div>
+    <!-- 콤보 카운터 + 타이머 바 -->
+    <div id="combo-ui" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);min-width:120px;text-align:center;pointer-events:none;z-index:55">
+      <div id="combo-label" style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#60a5fa;line-height:1;margin-bottom:4px">COMBO x1</div>
+      <div style="width:120px;height:4px;background:#1e2533;border-radius:2px;overflow:hidden;margin:0 auto">
+        <div id="combo-timer-bar" style="height:100%;width:100%;border-radius:2px;background:#60a5fa;transition:background 0.2s"></div>
+      </div>
+    </div>
+    <!-- 피버 인트로 오버레이 -->
+    <div id="fever-intro" style="display:none;position:absolute;inset:0;background:rgba(10,13,20,0.82);z-index:80;pointer-events:none;flex-direction:column;align-items:center;justify-content:center">
+      <!-- 1단계: 클리어 -->
+      <div id="fever-clear-stage" style="display:none;flex-direction:column;align-items:center;justify-content:center">
+        <div style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#34d399;letter-spacing:4px;margin-bottom:10px">목표 달성</div>
+        <div style="font-family:'Space Mono',monospace;font-size:40px;font-weight:900;color:#34d399;letter-spacing:6px;text-shadow:0 0 24px #34d399,0 0 48px #34d399;animation:clearPulse 0.5s ease-in-out infinite alternate">🎯 CLEAR!</div>
+        <div id="fever-clear-score" style="font-family:'Space Mono',monospace;font-size:14px;color:#6ee7b7;margin-top:12px;letter-spacing:2px"></div>
+      </div>
+      <!-- 2단계: 피버 -->
+      <div id="fever-fever-stage" style="display:none;flex-direction:column;align-items:center;justify-content:center">
+        <div id="fever-title" style="font-family:'Space Mono',monospace;font-size:32px;font-weight:900;color:#f87171;letter-spacing:6px;text-shadow:0 0 24px #f87171,0 0 48px #f87171;animation:feverPulse 0.4s ease-in-out infinite alternate">🔥 FEVER MODE 🔥</div>
+        <div id="fever-sub" style="font-family:'Space Mono',monospace;font-size:13px;color:#fbbf24;margin-top:10px;letter-spacing:2px">Chips × 1.5</div>
+      </div>
+    </div>
+    <!-- 핀 툴팁 -->
+    <div id="pin-tooltip" style="display:none;position:absolute;pointer-events:none;z-index:70;background:#131825;border:1px solid #1e2a3a;border-radius:6px;padding:5px 9px;font-family:'Space Mono',monospace;font-size:10px;color:#e2e8f0;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.5)">
+      <div id="pin-tooltip-name" style="font-weight:700;margin-bottom:2px"></div>
+      <div id="pin-tooltip-desc" style="color:#6b7280;font-size:9px"></div>
+    </div>
+  </div>
+
+  <!-- HAND -->
+  <div id="hand-panel">
+    <div class="hand-meta">
+      <div class="hand-meta-label">손패 <span id="hand-count" style="color:var(--text)">0</span> / 7</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="deck-btn">덱 보기 (52)</button>
+      </div>
+    </div>
+    <div class="cards-row" id="cards-row"></div>
+    <!-- 현재 족보 + 점수 (가운데 정렬, 카드 없을 때 숨김) -->
+    <div id="hand-info-row" style="display:none;text-align:center;margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap">
+        <span id="best-hand" style="font-size:12px;font-weight:700;color:var(--green);font-family:'Space Mono',monospace"></span>
+        <span id="hand-score-val" style="font-size:14px;font-weight:700;font-family:'Space Mono',monospace;color:var(--green)"></span>
+      </div>
+      <div id="hand-score-label" style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px"></div>
+      <!-- 다음 족보 안내 -->
+      <div id="next-hand-hint" style="font-size:10px;color:#60a5fa;font-family:'Space Mono',monospace;margin-top:3px;display:none"></div>
+    </div>
+  </div>
+
+  <!-- JOKERS -->
+  <div id="joker-panel" style="flex-wrap:wrap;min-height:36px">
+    <div style="font-size:10px;color:var(--muted);width:100%;padding:2px 0" id="joker-empty-msg">조커 없음 — 상점에서 구매하세요</div>
+  </div>
+
+  <!-- CONSUMABLES -->
+  <div id="consumable-panel" style="display:none;background:var(--bg2);border-top:1px solid var(--border);padding:6px 12px;display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0"></div>
+
+  <!-- DECK VIEWER -->
+  <div id="deck-screen">
+    <div class="deck-header">
+      <div class="deck-title">덱 빌더</div>
+      <button class="deck-close" id="deck-close-btn">닫기 ✕</button>
+    </div>
+    <div class="deck-stats" id="deck-stats"></div>
+    <div class="deck-section-title">현재 손패</div>
+    <div class="deck-cards-grid" id="deck-hand-cards" style="margin-bottom:12px"></div>
+    <div class="deck-section-title">♥ 하트</div>
+    <div class="deck-cards-grid" id="dg-heart"></div>
+    <div class="deck-section-title">♦ 다이아몬드</div>
+    <div class="deck-cards-grid" id="dg-diamond"></div>
+    <div class="deck-section-title">♣ 클럽</div>
+    <div class="deck-cards-grid" id="dg-club"></div>
+    <div class="deck-section-title">♠ 스페이드</div>
+    <div class="deck-cards-grid" id="dg-spade"></div>
+  </div>
+
+
+  <!-- SHOP SCREEN -->
+  <div id="shop-screen">
+    <div class="shop-header">
+      <div class="shop-title" id="shop-title">상점</div>
+      <div class="shop-coin">💰 <span id="shop-coins">4</span></div>
+    </div>
+    <div class="shop-stage-info" id="shop-stage-info"></div>
+    <div class="shop-section">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div class="shop-section-title">조커</div>
+        <button class="shop-reroll" id="shop-reroll">리롤 $<span id="reroll-cost">5</span></button>
+      </div>
+      <div class="shop-grid" id="shop-jokers"></div>
+    </div>
+    <div class="shop-section">
+      <div class="shop-section-title">카드 팩</div>
+      <div class="shop-grid" id="shop-packs"></div>
+    </div>
+    <div class="shop-section">
+      <div class="shop-section-title">플래닛 & 소모품</div>
+      <div class="shop-grid" id="shop-misc"></div>
+    </div>
+    <div class="shop-section">
+      <div class="shop-section-title">핀 업그레이드</div>
+      <div class="shop-grid" id="shop-pin-upgrades"></div>
+    </div>
+    <div class="shop-actions">
+      <button class="shop-btn" id="shop-pass">패스 (+$3)</button>
+      <button class="shop-btn next" id="shop-next">다음 블라인드 →</button>
+    </div>
+    <div id="coin-summary" style="margin:0 12px 14px;padding:10px 12px;background:var(--bg3);border-radius:var(--border-radius-md);font-size:11px;font-family:'Space Mono',monospace;color:#6ee7b7;line-height:1.7;display:none"></div>
+  </div>
+
+  <!-- RESULT OVERLAY -->
+  <div id="result-screen">
+    <div class="result-box">
+      <div style="font-size:11px;font-weight:700;margin-bottom:6px;font-family:'Space Mono',monospace;" id="res-title">HOLE — 구멍 낙하</div>
+      <div class="res-hand-name" id="res-hand-name">하이카드</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px" id="res-hand-sub"></div>
+      <div class="res-cards" id="res-cards"></div>
+      <div class="res-calc">
+        <div class="calc-line"><div class="calc-key">핀볼 Chips</div><div class="calc-val c" id="rc-pin">+0</div></div>
+        <div class="calc-line"><div class="calc-key">족보 기본 Chips</div><div class="calc-val c" id="rc-base">+0</div></div>
+        <div class="calc-line"><div class="calc-key">인핸스먼트 Chips</div><div class="calc-val c" id="rc-enh">+0</div></div>
+        <div class="calc-line"><div class="calc-key">총 Chips</div><div class="calc-val c" id="rc-chips">0</div></div>
+        <div class="calc-line"><div class="calc-key">족보 Mult</div><div class="calc-val m" id="rc-hmult">×1</div></div>
+        <div class="calc-line"><div class="calc-key">조커·카드 +Mult</div><div class="calc-val m" id="rc-jmult">+0</div></div>
+        <div class="calc-line"><div class="calc-key">족보 배율 ×Mult</div><div class="calc-val xm" id="rc-xmult">×1.0</div></div>
+        <div class="calc-line"><div class="calc-key">최종 점수</div><div class="calc-val final" id="rc-final">0</div></div>
+      </div>
+      <div class="res-miss" id="res-miss"></div>
+      <div id="res-clear-banner" style="display:none;background:#064e3b;border:1px solid #34d399;border-radius:6px;padding:7px 12px;margin-bottom:10px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:#34d399;text-align:center"></div>
+      <!-- 턴 도트 표시 -->
+      <div id="res-turn-row" style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-right:4px">턴</div>
+        <div id="res-dot-1" style="width:10px;height:10px;border-radius:50%;background:var(--bg3);border:1px solid var(--border)"></div>
+        <div id="res-dot-2" style="width:10px;height:10px;border-radius:50%;background:var(--bg3);border:1px solid var(--border)"></div>
+        <div id="res-dot-3" style="width:10px;height:10px;border-radius:50%;background:var(--bg3);border:1px solid var(--border)"></div>
+        <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-left:4px" id="res-turn-label"></div>
+      </div>
+      <div class="res-btn-row">
+        <button class="res-btn primary" id="res-retry">다시 시작</button>
+        <button class="res-btn" id="res-shop" style="display:none;border-color:var(--gold);color:var(--gold)">상점으로 →</button>
+      </div>
+      <!-- 게임오버 시 스테이지 최고 기록 -->
+      <div id="res-records" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:8px;text-align:center;letter-spacing:2px">BEST SCORES</div>
+        <div id="res-records-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING CHIPS CONTAINER -->
+  <div id="floats" style="position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:50"></div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+
+// --- SIZING ---
+function resize() {
+  const w = wrap.clientWidth;
+  canvas.width = w;
+  canvas.height = Math.floor(w * 1.15);
+  canvas.style.height = canvas.height + 'px';
+  initPins();
+  // 스테이지2부터 핀 추가: 스테이지N = +(N-1)개 (최대 7개)
+  const extraPins = Math.min(state.stage, 7); // stage 0-based → stage1=0개, stage2=1개...
+  for (let i = 0; i < extraPins; i++) addRandomPin();
+}
+
+// --- STATE ---
+const SUITS = ['heart','diamond','club','spade'];
+const SUIT_SYM = {heart:'♥',diamond:'♦',club:'♣',spade:'♠'};
+const RANKS = ['A','K','Q','J','10','9','8','7','6','5','4','3','2'];
+const RANK_VAL = {A:14,K:13,Q:12,J:11,'10':10,'9':9,'8':8,'7':7,'6':6,'5':5,'4':4,'3':3,'2':2};
+
+// --- 52-CARD DECK ---
+function buildFullDeck() {
+  const deck = [];
+  for (const suit of SUITS) {
+    for (const rank of RANKS) {
+      deck.push({ rank, suit, enhance: null, used: false });
+    }
+  }
+  return deck;
+}
+
+function drawFromDeck() {
+  // draw a random card that hasn't been used yet this round
+  const available = state.deck.filter(c => !c.used);
+  if (!available.length) {
+    // reshuffle: reset used flags
+    state.deck.forEach(c => c.used = false);
+    return drawFromDeck();
+  }
+  const card = available[Math.floor(Math.random() * available.length)];
+  card.used = true;
+  return { rank: card.rank, suit: card.suit, enhance: card.enhance };
+}
+const HAND_DATA = {
+  '로얄 플러시':   {chips:100,mult:10,xmult:4.0},
+  '스트레이트 플러시':{chips:80,mult:8,xmult:3.0},
+  '포카드':        {chips:60,mult:7,xmult:2.2},
+  '풀하우스':      {chips:40,mult:4,xmult:1.8},
+  '플러시':        {chips:35,mult:4,xmult:1.6},
+  '스트레이트':    {chips:35,mult:4,xmult:1.6},
+  '트리플':        {chips:25,mult:3,xmult:1.4},
+  '투페어':        {chips:15,mult:2,xmult:1.2},
+  '원페어':        {chips:10,mult:2,xmult:1.1},
+  '하이카드':      {chips:3,mult:1,xmult:1.0},
+  // 6장 특수 족보 (목표 초과 후 추가 카드 습득 시)
+  '풀 플러시':     {chips:160,mult:8,xmult:5.0},   // 같은 무늬 6장
+  '더블 스트레이트':{chips:120,mult:6,xmult:4.0},  // 연속 6장
+  '트리플 트리플': {chips:100,mult:6,xmult:3.5},   // 3장+3장
+  '더블 풀하우스': {chips:90, mult:5,xmult:3.0},   // 트리플+페어+페어
+};
+const STAGE_TARGETS = [5000, 15000, 50000, 150000, 400000, 900000, 2000000, 5000000];
+
+// 핀 업그레이드 정의 (각 항목 최대 Lv3)
+const PIN_UPGRADE_DEFS = [
+  {
+    id: 'normal',
+    name: '일반 핀 강화',
+    icon: '⬡',
+    desc: ['타격당 +5 Chips', '타격당 +12 Chips', '타격당 +25 Chips'],
+    price: [3, 5, 8],
+    maxLv: 3,
+  },
+  {
+    id: 'spring',
+    name: '스프링 핀 강화',
+    icon: '↑',
+    desc: ['튕김 배율 +0.2', '튕김 배율 +0.4', '스프링 Chips ×2'],
+    price: [4, 6, 9],
+    maxLv: 3,
+  },
+  {
+    id: 'card',
+    name: '카드 핀 강화',
+    icon: '◆',
+    desc: ['인핸스먼트 확률 +10%', '인핸스먼트 확률 +25%', '카드 드롭 시 +20 Chips'],
+    price: [5, 7, 10],
+    maxLv: 3,
+  },
+  {
+    id: 'spring_add',
+    name: '스프링 핀 추가',
+    icon: '⟳',
+    desc: ['스프링 핀 +1개 (기본 2→3)', '스프링 핀 +1개 (→4)', '스프링 핀 +1개 (→5)'],
+    price: [5, 7, 10],
+    maxLv: 3,
+  },
+  {
+    id: 'max_box',
+    name: 'MAX 박스 확장',
+    icon: '▲',
+    desc: ['MAX 존 50%→60%', 'MAX 존 60%→70%', 'MAX 존 70%→80%'],
+    price: [6, 8, 11],
+    maxLv: 3,
+  },
+];
+
+// 영구 유지 (런 간에도 유지)
+const pinUpgrades = { normal: 0, spring: 0, card: 0, spring_add: 0, max_box: 0 };
+
+let state = {
+  chips: 0,
+  mult: 1,
+  jokerMult: 0,
+  comboCount: 0,
+  combo: 0,
+  comboTimer: 0,
+  fever: false,
+  holeBlocked: false, // 콤보 피버 중 홀 차단
+  comboTimerPct: 0,
+  heartHits: 0,
+  ball: null,
+  pins: [],
+  hand: [],
+  deck: buildFullDeck(),
+  jokers: [],
+  consumables: [],
+  insurance: false,
+  magnet: false,
+  turn: 1,
+  totalChipsBank: 0,
+  stage: 0,
+  roundIdx: 0,
+  phase: 'aim',
+  aimAngle: -Math.PI / 2,
+  mouseOnCanvas: false,
+  charging: false,
+  chargeVal: 0,
+  chargeDir: 1,
+  chargeSpeed: 120,
+  slowmo: false,    // 홀 진입 슬로우모션
+};
+
+// --- PINS ---
+const PIN_TYPES = ['normal','normal','normal','normal','normal','card'];
+function mkPin(x,y,type,suit){
+  return {x,y,r:7,type,suit:suit||null,alive:true,hit:false};
+}
+function mkBlinkPin(x,y,type,suit){
+  return {x,y,r:7,type,suit:suit||null,alive:true,hit:false,
+    blink:true, blinkOn:true, blinkTimer:0,
+    blinkOnDur: 1000 + Math.random()*500,  // 켜짐 0.8~1.3초
+    blinkOffDur: 400 + Math.random()*200,  // 꺼짐 0.4~0.6초
+  };
+}
+function mkMovingPin(x,y,baseX,moveRange){
+  return {x,y,r:7,type:'moving',suit:null,alive:true,hit:false,
+    moving:true, baseX, moveRange,
+    moveDir:Math.random()<0.5?1:-1,
+    moveSpeed: 0.5 + Math.random()*0.5,
+    moveX: x,
+  };
+}
+
+function initPins() {
+  const W = canvas.width, H = canvas.height;
+  state.pins = [];
+  const rows = 9, cols = 7;
+  const padX = W * 0.08, padY = H * 0.08;
+  const spacingY = (H * 0.65) / (rows - 1);
+  const spacingX = (W - 2 * padX) / (cols - 1);
+
+  // 스테이지별 스프링 핀 수: 스테이지1=2, 스테이지2=3, ..., 스테이지8=9
+  // + spring_add 업그레이드 누적
+  const targetSprings = 2 + state.stage + pinUpgrades.spring_add;
+
+  // 스테이지별 카드 핀 수: 스테이지1=16, 스테이지2=15, ..., 스테이지8=8 (8 + (7-stage) * ... )
+  // stage 0=16, stage 7=8 → 16 - stage (최소 8)
+  const targetCards = Math.max(8, 16 - state.stage);
+
+  // 미스터리 비율: 카드핀 중 약 44% (기존 0.20/0.45 = 44%)
+  const mysteryRatio = 0.44;
+  const targetMystery = Math.round(targetCards * mysteryRatio);
+  const targetSuitCard = targetCards - targetMystery;
+
+  // 전체 가능 자리 목록 수집
+  const allSlots = [];
+  for (let r = 0; r < rows; r++) {
+    const offset = (r % 2 === 0) ? 0 : spacingX / 2;
+    const colsThisRow = (r % 2 === 0) ? cols : cols - 1;
+    for (let c = 0; c < colsThisRow; c++) {
+      allSlots.push({ r, c, x: padX + offset + c * spacingX, y: padY + r * spacingY });
+    }
+  }
+
+  // 고정 스프링 슬롯
+  const fixedSprings = [
+    {r:2, c:1}, {r:5, c:4},
+    {r:1, c:2}, {r:3, c:5}, {r:6, c:0}, {r:7, c:3}, {r:4, c:2}, {r:2, c:5}, {r:6, c:4}
+  ].slice(0, targetSprings);
+  const fixedSpringKeys = new Set(fixedSprings.map(s => s.r + '_' + s.c));
+
+  // 스프링 핀 배치
+  for (const sp of fixedSprings) {
+    const slot = allSlots.find(s => s.r === sp.r && s.c === sp.c);
+    if (slot) state.pins.push(mkPin(slot.x, slot.y, 'spring', null));
+  }
+
+  // 카드/미스터리 배치 가능 슬롯 (내부 행, 스프링 제외)
+  const inner = allSlots.filter(s => s.r > 0 && s.r < rows - 1 && !fixedSpringKeys.has(s.r + '_' + s.c));
+  const shuffled = inner.sort(() => Math.random() - 0.5);
+
+  // 사용된 슬롯 추적 (좌표 기준)
+  const usedKeys = new Set();
+  const slotKey = s => Math.round(s.x) + '_' + Math.round(s.y);
+
+  // 카드 핀 배치
+  let cardIdx = 0;
+  for (let i = 0; i < targetSuitCard && cardIdx < shuffled.length; i++, cardIdx++) {
+    const suit = SUITS[Math.floor(Math.random() * 4)];
+    state.pins.push(mkPin(shuffled[cardIdx].x, shuffled[cardIdx].y, 'card', suit));
+    usedKeys.add(slotKey(shuffled[cardIdx]));
+  }
+  // 미스터리 핀 배치
+  for (let i = 0; i < targetMystery && cardIdx < shuffled.length; i++, cardIdx++) {
+    state.pins.push(mkPin(shuffled[cardIdx].x, shuffled[cardIdx].y, 'mystery', null));
+    usedKeys.add(slotKey(shuffled[cardIdx]));
+  }
+
+  // 나머지 슬롯: 50% 확률로 일반/폭발 핀만
+  // (인력·척력 핀은 특수 핀 블록에서 최대 3개 강제 배치로만 등장)
+  const bombChance  = (state.stage >= 4) ? (0.10 + state.stage * 0.03) : 0;
+
+  function pickPinType() {
+    const roll = Math.random();
+    if (roll < bombChance) return 'bomb';
+    return 'normal';
+  }
+
+  // 왼쪽 끝(c=0) 내부 행 슬롯 중 하나 강제 배치
+  const leftEdge = shuffled.filter(s => s.c === 0 && !usedKeys.has(slotKey(s)));
+  if (leftEdge.length > 0) {
+    const pick = leftEdge[Math.floor(Math.random() * leftEdge.length)];
+    const t = pickPinType();
+    state.pins.push(mkPin(pick.x, pick.y, t, t === 'card' ? SUITS[Math.floor(Math.random()*4)] : null));
+    usedKeys.add(slotKey(pick));
+  }
+
+  // 오른쪽 끝(짝수 행 c=6, 홀수 행 c=5) 내부 행 슬롯 중 하나 강제 배치
+  const rightEdge = shuffled.filter(s => (s.r % 2 === 0 ? s.c === cols - 1 : s.c === cols - 2) && !usedKeys.has(slotKey(s)));
+  if (rightEdge.length > 0) {
+    const pick = rightEdge[Math.floor(Math.random() * rightEdge.length)];
+    const t = pickPinType();
+    state.pins.push(mkPin(pick.x, pick.y, t, t === 'card' ? SUITS[Math.floor(Math.random()*4)] : null));
+    usedKeys.add(slotKey(pick));
+  }
+
+  // 나머지 슬롯: usedKeys에 없는 자리만 배치
+  for (let i = cardIdx; i < shuffled.length; i++) {
+    if (Math.random() < 0.50) continue;
+    const s = shuffled[i];
+    if (usedKeys.has(slotKey(s))) continue;
+    state.pins.push(mkPin(s.x, s.y, pickPinType(), null));
+    usedKeys.add(slotKey(s));
+  }
+  // 외곽 행(r=0, r=8)도 50% 일반 핀
+  const outer = allSlots.filter(s => (s.r === 0 || s.r === rows - 1) && !fixedSpringKeys.has(s.r + '_' + s.c));
+  for (const s of outer) {
+    if (Math.random() < 0.50) continue;
+    if (usedKeys.has(slotKey(s))) continue;
+    state.pins.push(mkPin(s.x, s.y, 'normal', null));
+    usedKeys.add(slotKey(s));
+  }
+
+  // ── 스테이지별 특수 핀 ──────────────────────────────
+
+  // ST2~  깜빡이는 핀 10%, ST6~ 30%
+  const blinkRatio = state.stage >= 5 ? 0.30
+                   : state.stage >= 1 ? 0.10 : 0;
+  if (blinkRatio > 0) {
+    const candidates = state.pins.filter(p =>
+      p.type === 'normal' || p.type === 'spring' ||
+      p.type === 'magnet_pull' || p.type === 'magnet_push'
+    );
+    const count = Math.round(candidates.length * blinkRatio);
+    [...candidates].sort(() => Math.random()-0.5).slice(0, count).forEach(p => {
+      p.blink = true; p.blinkOn = true;
+      p.blinkTimer  = Math.random() * 1500;
+      p.blinkOnDur  = 900  + Math.random() * 400;
+      p.blinkOffDur = 350  + Math.random() * 250;
+    });
+  }
+
+  // ST3~ 인력 핀 3개 강제 추가
+  if (state.stage >= 2) {
+    const freeSlots = shuffled.filter(s => !usedKeys.has(slotKey(s)));
+    freeSlots.sort(() => Math.random()-0.5).slice(0, 3).forEach(s => {
+      state.pins.push(mkPin(s.x, s.y, 'magnet_pull', null));
+      usedKeys.add(slotKey(s));
+    });
+  }
+
+  // ST5~ 폭발 핀 3개 강제 추가
+  if (state.stage >= 4) {
+    const freeSlots = shuffled.filter(s => !usedKeys.has(slotKey(s)));
+    freeSlots.sort(() => Math.random()-0.5).slice(0, 3).forEach(s => {
+      state.pins.push(mkPin(s.x, s.y, 'bomb', null));
+      usedKeys.add(slotKey(s));
+    });
+  }
+
+  // ST7~ 척력 핀 3개 강제 추가
+  if (state.stage >= 6) {
+    const freeSlots = shuffled.filter(s => !usedKeys.has(slotKey(s)));
+    freeSlots.sort(() => Math.random()-0.5).slice(0, 3).forEach(s => {
+      state.pins.push(mkPin(s.x, s.y, 'magnet_push', null));
+      usedKeys.add(slotKey(s));
+    });
+  }
+
+  // ST4~ 이동 핀 3개, ST8~ 6개
+  const movingCount = state.stage >= 7 ? 6
+                    : state.stage >= 3 ? 3 : 0;
+  if (movingCount > 0) {
+    const moveRange = spacingX * 3;
+    const freeInner = shuffled.filter(s => !usedKeys.has(slotKey(s)));
+    freeInner.sort(() => Math.random()-0.5).slice(0, movingCount).forEach(s => {
+      const minX = padX + 20, maxX = W - padX - 20;
+      const safeRange = Math.min(moveRange, Math.min(s.x - minX, maxX - s.x));
+      state.pins.push(mkMovingPin(s.x, s.y, s.x, Math.max(spacingX, safeRange)));
+      usedKeys.add(slotKey(s));
+    });
+  }
+}
+
+function addRandomPin() {
+  const W = canvas.width, H = canvas.height;
+  const rows = 9, cols = 7;
+  const padX = W * 0.08, padY = H * 0.08;
+  const spacingY = (H * 0.65) / (rows - 1);
+  const spacingX = (W - 2 * padX) / (cols - 1);
+
+  // 가능한 그리드 위치 목록 생성
+  const candidates = [];
+  for (let r = 1; r < rows - 1; r++) {
+    const offset = (r % 2 === 0) ? 0 : spacingX / 2;
+    const colsThisRow = (r % 2 === 0) ? cols : cols - 1;
+    for (let c = 0; c < colsThisRow; c++) {
+      const x = padX + offset + c * spacingX;
+      const y = padY + r * spacingY;
+      // 이미 살아있는 핀이 근처에 없는 자리만
+      const occupied = state.pins.some(p => p.alive && Math.abs(p.x - x) < 8 && Math.abs(p.y - y) < 8);
+      if (!occupied) candidates.push({x, y});
+    }
+  }
+  if (!candidates.length) return;
+
+  const pos = candidates[Math.floor(Math.random() * candidates.length)];
+  const roll = Math.random();
+  let newPin;
+  if (roll < 0.35) {
+    newPin = mkPin(pos.x, pos.y, 'card', SUITS[Math.floor(Math.random() * 4)]);
+  } else if (roll < 0.55) {
+    newPin = mkPin(pos.x, pos.y, 'mystery', null);
+  } else {
+    newPin = mkPin(pos.x, pos.y, 'normal', null);
+  }
+  state.pins.push(newPin);
+}
+function spawnBall(power) {
+  const W = canvas.width, H = canvas.height;
+  const angle = state.aimAngle;
+  const speed = 4 + power * 0.16;
+  const flipBaseH = 21;
+  const launchY = H - flipBaseH - 30;
+  state.ball = {
+    x: W / 2,
+    y: launchY,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    r: 8,
+    trail: [],
+    graceFrames: 20,
+    orbits: new Map(), // pinId → { lastAngle, accumulated }
+  };
+}
+
+// --- PHYSICS ---
+function stepPhysics() {
+  const W = canvas.width, H = canvas.height;
+  const b = state.ball;
+  if (!b) return;
+
+  b.trail.push({x: b.x, y: b.y});
+  if (b.trail.length > 12) b.trail.shift();
+  if (b.graceFrames > 0) b.graceFrames--;
+
+  // 스타 핀 / 인력 핀 / 척력 핀 근처 여부 먼저 판단 (slowScale 계산 전)
+  let nearStar = false;
+  if (b.orbits) {
+    for (const p of state.pins) {
+      if (!p.alive) continue;
+      if (p.type !== 'star' && p.type !== 'magnet_pull' && p.type !== 'magnet_push') continue;
+      const sdx = b.x - p.x, sdy = b.y - p.y;
+      if (Math.sqrt(sdx*sdx + sdy*sdy) < p.r * 13) { nearStar = true; break; }
+    }
+  }
+  // 스타 슬로우 on/off (홀 낙하 슬로우는 건드리지 않음)
+  if (nearStar) {
+    state._starSlowmo = true;
+  } else if (state._starSlowmo) {
+    state._starSlowmo = false;
+  }
+  // 홀 슬로우(inHole) 또는 스타 슬로우 중 하나라도 true면 슬로우
+  // (홀 슬로우는 아래 inHole 블록에서 직접 관리)
+  if (!state._holeSlowmo) state.slowmo = state._starSlowmo;
+
+  const slowScale = state.slowmo ? 0.25 : 1.0;
+  b.vy += 0.18 * slowScale; // gravity
+  b.x += b.vx * slowScale;
+  b.y += b.vy * slowScale;
+
+  // 오비탈 감지 — 이동 후 위치 기준으로 각도 계산
+  if (b.orbits) {
+    const orbitRange = 110;
+
+    for (const p of state.pins) {
+      if (!p.alive) continue;
+      if (p.type === 'star' || p.type === 'magnet_pull' || p.type === 'magnet_push') continue;
+
+      // 오비탈 발동 대상: 스프링 핀 + 일반 핀
+      if (p.type !== 'spring' && p.type !== 'normal') continue;
+      const odx = b.x - p.x, ody = b.y - p.y;
+      const odist = Math.sqrt(odx*odx + ody*ody);
+      if (odist > orbitRange) { b.orbits.delete(p); continue; }
+
+      const angle = Math.atan2(ody, odx);
+      if (!b.orbits.has(p)) {
+        b.orbits.set(p, { lastAngle: angle, accumulated: 0 });
+      } else {
+        const orb = b.orbits.get(p);
+        let delta = angle - orb.lastAngle;
+        if (delta > Math.PI)  delta -= Math.PI * 2;
+        if (delta < -Math.PI) delta += Math.PI * 2;
+
+        // 방향 전환 시(핀 반사 직후) 누적 초기화 — 단순 통과 궤도 방지
+        if (orb.lastDelta !== undefined && orb.lastDelta !== 0 && Math.sign(delta) !== Math.sign(orb.lastDelta)) {
+          orb.accumulated = 0;
+        }
+        orb.accumulated += delta;
+        orb.lastDelta = delta;
+        orb.lastAngle = angle;
+
+        // 270도(π×1.5) — 실제 공전에 가까운 궤도여야 발동
+        const ORBITAL_THRESHOLD = Math.PI * 1.5;
+        if (Math.abs(orb.accumulated) >= ORBITAL_THRESHOLD && !p.orbital) {
+          p.orbital = true;
+          triggerOrbital(p, b);
+        }
+      }
+    }
+  }
+
+  // walls — 10% speed boost on bounce
+  if (b.x - b.r < 0) { b.x = b.r; b.vx = Math.abs(b.vx) * 1.1; b.vy *= 1.1; spawnFloat(b.r + 10, b.y, '+10%', '#fbbf24'); }
+  if (b.x + b.r > W) { b.x = W - b.r; b.vx = -Math.abs(b.vx) * 1.1; b.vy *= 1.1; spawnFloat(W - 30, b.y, '+10%', '#fbbf24'); }
+
+  // top wall — 10% speed boost + vx 변주
+  if (b.y - b.r < 0) {
+    b.y = b.r;
+    b.vy = Math.abs(b.vy) * 1.1;
+    b.vx = b.vx * 1.1 + (Math.random() - 0.5) * Math.abs(b.vy) * 0.3;
+    spawnFloat(b.x, b.r + 12, '+10%', '#c084fc');
+  }
+
+  // 자력장 — 구멍 근처에서 공을 자동으로 밀어냄 (1회용)
+  const holeX = W / 2, holeY = H, holeR = W * 0.09;
+  const holeEdgeY = H - 21; // flipBaseH=21
+  if (state.magnet) {
+    const dx2 = b.x - holeX, dy2 = b.y - holeY;
+    const dist2 = Math.sqrt(dx2*dx2 + dy2*dy2);
+    const magnetRange = holeR * 3.5;
+    if (dist2 < magnetRange) {
+      // 반발력 — 구멍 반대 방향으로 밀어냄
+      const nx2 = dx2 / dist2, ny2 = dy2 / dist2;
+      const force = (1 - dist2 / magnetRange) * 1.8;
+      b.vx += nx2 * force;
+      b.vy += ny2 * force;
+      // 범위 안에 들어온 순간 1회 발동 후 해제
+      if (dist2 < holeR * 1.5) {
+        state.magnet = false;
+        renderConsumablePanel();
+        spawnFloat(b.x, b.y - 20, '자력장 발동!', '#fbbf24');
+        // 강하게 튕겨냄
+        b.vy = -Math.abs(b.vy) * 1.5 - 5;
+        b.vx *= 1.3;
+      }
+    }
+  }
+
+  // hole at bottom center — 홀 안에 들어오면 중력으로 자연스럽게 빠짐
+  const dx = b.x - holeX, dy = b.y - holeY;
+  const inHole = b.graceFrames <= 0 && Math.sqrt(dx*dx + dy*dy) < holeR;
+  if (inHole) {
+    if (state.holeBlocked) {
+      // 피버 홀 차단 — 홀 경계에서 튕겨냄
+      b.y = holeEdgeY - b.r - 1;
+      b.vy = -Math.abs(b.vy) * 0.85;
+      b.vx += (b.x < holeX ? -1 : 1) * 0.5; // 좌우 살짝 분산
+      state.slowmo = false;
+      state._holeSlowmo = false;
+    } else if (state.insurance) {
+      state.insurance = false;
+      state.slowmo = false;
+      state._holeSlowmo = false;
+      b.vy = -(4 + 100 * 0.09) * 1.1;
+      b.vx = 0;
+      spawnFloat(b.x, holeEdgeY - 20, '보험 발동!', '#fbbf24');
+      renderConsumablePanel();
+      b.y = holeEdgeY - b.r - 2;
+    } else {
+      // 홀 진입 순간 슬로우모션 시작
+      if (!state._holeSlowmo) {
+        state._holeSlowmo = true;
+        state.slowmo = true;
+      }
+      // 홀 안: 벽 반사 없이 중력만 적용해서 낙하
+      b.vx += (holeX - b.x) * 0.02;
+      b.vx *= 0.96;
+      // 화면 밖으로 나가면 슬로우모션 해제 후 턴 종료
+      if (b.y > H + b.r) {
+        state.slowmo = false;
+        state._holeSlowmo = false;
+        triggerResult();
+        return;
+      }
+    }
+  } else {
+    // 홀 반경 밖 — 홀 슬로우 해제, 스타 슬로우는 유지
+    if (state._holeSlowmo) {
+      state._holeSlowmo = false;
+      state.slowmo = state._starSlowmo || false;
+    }
+  }
+
+  // bottom wall (not hole region)
+  if (!inHole && b.y + b.r > H - 10) {
+    const distToHole = Math.abs(b.x - holeX);
+    if (distToHole > holeR + b.r + 5) {
+      b.y = H - 10 - b.r;
+      b.vy = -Math.abs(b.vy) * 0.7;
+      b.vx *= 0.9;
+    }
+  }
+
+  // flipper boxes — diagonal, hole side 50% lower, wall side 10% higher
+  const flipBaseH = 21;
+  const flipTopH  = 37;
+  const wallEdgeY = H - flipTopH;
+
+  // Left flipper: x0=0 to x1=holeX-holeR
+  // MAX zone: wall side (x0 to midX), SLIDE zone: hole side (midX to x1)
+  {
+    const x0 = 0, x1 = holeX - holeR;
+    const maxRatio = 0.5 + pinUpgrades.max_box * 0.1; // 0.5→0.6→0.7→0.8
+    const midX = x0 + (x1 - x0) * maxRatio;
+    const topAt = (bx) => wallEdgeY + (holeEdgeY - wallEdgeY) * ((bx - x0) / (x1 - x0));
+    if (b.x + b.r > x0 && b.x - b.r < x1 && b.y + b.r > topAt(b.x) && b.y < H) {
+      const surfaceY = topAt(b.x);
+      b.y = surfaceY - b.r - 1;
+      if (b.x < midX) {
+        // MAX zone — 대각선 표면 법선 방향으로 튕김 (수직 아님)
+        const maxSpeed = (4 + 100 * 0.09) * 1.1;
+        // 왼쪽 플리퍼: 표면이 왼쪽 높고 오른쪽 낮음 → 법선은 오른쪽 위 방향
+        const slopeAngle = Math.atan2(holeEdgeY - wallEdgeY, x1 - x0);
+        const nx = -Math.sin(slopeAngle), ny = -Math.cos(slopeAngle);
+        const incomingSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+        const launchSpeed = Math.max(maxSpeed, incomingSpeed);
+        // vx는 반드시 오른쪽(양수) 방향으로 강제 — 왼쪽으로 거슬러 올라가는 현상 방지
+        b.vx = Math.abs(nx * launchSpeed * 0.55);
+        b.vy = -Math.abs(ny * launchSpeed);
+        spawnFloat(b.x, surfaceY - 14, 'MAX!', '#fbbf24');
+        state.chips += 20; updateHUD();
+      } else {
+        // SLIDE zone — reflect off slope, ball flows toward hole
+        const slopeAngle = Math.atan2(holeEdgeY - wallEdgeY, x1 - x0);
+        const nx = -Math.sin(slopeAngle), ny = Math.cos(slopeAngle);
+        const dot = b.vx * nx + b.vy * ny;
+        if (dot < 0) {
+          b.vx -= 2 * dot * nx * 0.6;
+          b.vy -= 2 * dot * ny * 0.6;
+        }
+      }
+    }
+  }
+
+  // Right flipper: x0=holeX+holeR to x1=W
+  // SLIDE zone: hole side (x0 to midX), MAX zone: wall side (midX to x1)
+  {
+    const x0 = holeX + holeR, x1 = W;
+    const maxRatio = 0.5 + pinUpgrades.max_box * 0.1;
+    const midX = x0 + (x1 - x0) * (1 - maxRatio); // 오른쪽은 반전
+    const topAt = (bx) => holeEdgeY + (wallEdgeY - holeEdgeY) * ((bx - x0) / (x1 - x0));
+    if (b.x + b.r > x0 && b.x - b.r < x1 && b.y + b.r > topAt(b.x) && b.y < H) {
+      const surfaceY = topAt(b.x);
+      b.y = surfaceY - b.r - 1;
+      if (b.x > midX) {
+        // MAX zone — 대각선 표면 법선 방향으로 튕김 (수직 아님)
+        const maxSpeed = (4 + 100 * 0.09) * 1.1;
+        // 오른쪽 플리퍼: 표면이 오른쪽 높고 왼쪽 낮음 → 법선은 왼쪽 위 방향
+        const slopeAngle = Math.atan2(wallEdgeY - holeEdgeY, x1 - x0);
+        const nx = Math.sin(slopeAngle), ny = -Math.cos(slopeAngle);
+        const incomingSpeed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
+        const launchSpeed = Math.max(maxSpeed, incomingSpeed);
+        // vx는 반드시 왼쪽(음수) 방향으로 강제 — 오른쪽으로 거슬러 올라가는 현상 방지
+        b.vx = -Math.abs(nx * launchSpeed * 0.55);
+        b.vy = -Math.abs(ny * launchSpeed);
+        spawnFloat(b.x, surfaceY - 14, 'MAX!', '#fbbf24');
+        state.chips += 20; updateHUD();
+      } else {
+        // SLIDE zone — reflect off slope
+        const slopeAngle = Math.atan2(wallEdgeY - holeEdgeY, x1 - x0);
+        const nx = Math.sin(slopeAngle), ny = -Math.cos(slopeAngle);
+        const dot = b.vx * nx + b.vy * ny;
+        if (dot < 0) {
+          b.vx -= 2 * dot * nx * 0.6;
+          b.vy -= 2 * dot * ny * 0.6;
+        }
+      }
+    }
+  }
+
+  // 자력 핀 원거리 힘 (접촉 전 영향)
+  for (const p of state.pins) {
+    if (!p.alive) continue;
+    if (p.type !== 'magnet_pull' && p.type !== 'magnet_push' && p.type !== 'star') continue;
+    const mdx = b.x - p.x, mdy = b.y - p.y;
+    const mdist = Math.sqrt(mdx*mdx + mdy*mdy);
+
+    if (p.type === 'star') {
+      const goldRange = p.r * 11;
+      if (mdist < goldRange && mdist > 0.1) {
+        const nx = mdx / mdist, ny = mdy / mdist;
+        const speed = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+
+        // 너무 가까우면 척력 전환
+        if (mdist < p.r * 4) {
+          const pushForce = Math.max(2.5, 5.0 - speed);
+          b.vx += nx * pushForce;
+          b.vy += ny * pushForce;
+          if (p._starAcc) p._starAcc = null;
+        } else {
+          // 누적 각도 540도 초과 시 강제 탈출
+          if (!p._starAcc) p._starAcc = { lastAngle: null, total: 0 };
+          const curAngle = Math.atan2(mdy, mdx);
+          if (p._starAcc.lastAngle !== null) {
+            let delta = curAngle - p._starAcc.lastAngle;
+            if (delta > Math.PI)  delta -= Math.PI * 2;
+            if (delta < -Math.PI) delta += Math.PI * 2;
+            p._starAcc.total += Math.abs(delta);
+          }
+          p._starAcc.lastAngle = curAngle;
+
+          if (p._starAcc.total >= Math.PI * 3) {
+            p._starAcc = null;
+            const escapeSpeed = Math.max(6, speed * 1.5);
+            b.vx = nx * escapeSpeed;
+            b.vy = ny * escapeSpeed - 3;
+            spawnFloat(p.x, p.y - 18, '탈출!', '#fbbf24');
+          } else {
+            const slowScale = state.slowmo ? 0.25 : 1.0;
+            const strength = (1 - mdist / goldRange) * 0.7 * slowScale;
+            b.vx -= nx * strength;
+            b.vy -= ny * strength;
+          }
+        }
+      } else {
+        if (p._starAcc) p._starAcc = null;
+      }
+      continue;
+    }
+
+    const magnetRange = p.r * 12;
+    if (mdist < magnetRange && mdist > 0.1) {
+      const nx = mdx / mdist, ny = mdy / mdist;
+
+      if (p.type === 'magnet_pull') {
+        const speed = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+
+        // 방법 D: 충돌 반경의 4배 이하면 척력 전환 (범위 확대)
+        if (mdist < p.r * 4) {
+          const pushForce = Math.max(2.5, 5.0 - speed);
+          b.vx += nx * pushForce;
+          b.vy += ny * pushForce;
+          // 척력 발동 시 누적 초기화
+          if (p._orbitAcc) p._orbitAcc = null;
+        } else {
+          // 방법 B: 시간 기반 탈출 — 누적 각도 추적
+          if (!p._orbitAcc) p._orbitAcc = { lastAngle: null, total: 0 };
+          const curAngle = Math.atan2(mdy, mdx);
+          if (p._orbitAcc.lastAngle !== null) {
+            let delta = curAngle - p._orbitAcc.lastAngle;
+            if (delta > Math.PI)  delta -= Math.PI * 2;
+            if (delta < -Math.PI) delta += Math.PI * 2;
+            // 방향 무관하게 절댓값 누적 (진동도 카운트)
+            p._orbitAcc.total += Math.abs(delta);
+          }
+          p._orbitAcc.lastAngle = curAngle;
+
+          if (p._orbitAcc.total >= Math.PI * 3) {
+            // 540도(1.5바퀴) 누적 — 강제 탈출
+            p._orbitAcc = null;
+            const escapeSpeed = Math.max(6, speed * 1.5);
+            b.vx = nx * escapeSpeed;
+            b.vy = ny * escapeSpeed - 3;
+            spawnFloat(p.x, p.y - 18, '탈출!', '#fb923c');
+          } else {
+            const slowScale = state.slowmo ? 0.25 : 1.0;
+            const strength = (1 - mdist / magnetRange) * 0.7 * slowScale;
+            b.vx -= nx * strength;
+            b.vy -= ny * strength;
+          }
+        }
+      } else {
+        // 척력: 핀 반대 방향으로 밀어냄
+        const slowScale = state.slowmo ? 0.25 : 1.0;
+        const strength = (1 - mdist / magnetRange) * 0.9 * slowScale;
+        b.vx += nx * strength;
+        b.vy += ny * strength;
+      }
+    } else {
+      // 범위 밖으로 나가면 누적 초기화
+      if (p.type === 'magnet_pull' && p._orbitAcc) p._orbitAcc = null;
+    }
+  }
+
+  // 자력 조커 — 모든 핀에 약한 인력 적용
+  if (state.jokers.some(j => j.effect === 'magnet_joker')) {
+    for (const p of state.pins) {
+      if (!p.alive) continue;
+      if (p.type === 'card' || p.type === 'mystery') continue;
+      const jdx = b.x - p.x, jdy = b.y - p.y;
+      const jdist = Math.sqrt(jdx*jdx + jdy*jdy);
+      const jRange = p.r * 5;
+      if (jdist < jRange && jdist > 0.1) {
+        const jnx = jdx / jdist, jny = jdy / jdist;
+        const strength = (1 - jdist / jRange) * 0.12;
+        b.vx -= jnx * strength;
+        b.vy -= jny * strength;
+      }
+    }
+  }
+
+  // pin collision
+  for (const p of state.pins) {
+    if (!p.alive) continue;
+    // 깜빡이는 핀이 꺼져있으면 통과
+    if (p.blink && !p.blinkOn) continue;
+    const dx = b.x - p.x, dy = b.y - p.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const minDist = b.r + p.r;
+    if (dist < minDist && dist > 0.1) {
+
+      // 움직이는 핀: 일반 핀과 동일하게 반사
+      if (p.moving && !p.hit) {
+        p.hit = true;
+        const nx2 = dx/dist, ny2 = dy/dist;
+        const overlap2 = minDist - dist;
+        b.x += nx2 * overlap2 * 0.5;
+        b.y += ny2 * overlap2 * 0.5;
+        const dot2 = b.vx*nx2 + b.vy*ny2;
+        b.vx -= 2*dot2*nx2; b.vy -= 2*dot2*ny2;
+        b.vx *= 0.95; b.vy *= 0.95;
+        onNormalHit(p);
+        setTimeout(() => { p.hit = false; }, 300);
+        continue;
+      }
+
+      // 자력 핀: 통과하며 Chips 보너스 (반사 없음)
+      if ((p.type === 'magnet_pull' || p.type === 'magnet_push') && !p.hit) {
+        p.hit = true;
+        const magBonus = 15;
+        state.chips += magBonus;
+        spawnFloat(p.x, p.y, (p.type === 'magnet_pull' ? '🧲' : '↗') + '+' + magBonus + 'C', p.type === 'magnet_pull' ? '#60a5fa' : '#fb923c');
+        updateHUD();
+        setTimeout(() => { p.hit = false; }, 600);
+        continue;
+      }
+
+      // 골드 핀: 타격 시 대량 Chips + 일반 핀으로 복귀
+      if (p.type === 'star' && !p.hit) {
+        p.hit = true;
+        const goldChips = 120 + state.combo * 5;
+        state.chips += goldChips;
+        spawnFloat(p.x, p.y, '⭐ +' + goldChips + 'C', '#fbbf24');
+        updateHUD();
+        // 골드 핀은 타격 후 일반 핀으로 복귀
+        setTimeout(() => { p.type = p._baseType || 'spring'; p._baseType = null; p.orbital = false; p.hit = false; }, 500);
+        continue;
+      }
+
+      // card/mystery: 통과하며 습득 (반사 없음)
+      if (p.type === 'card' && !p.hit) {
+        p.hit = true; p.alive = false;
+        onCardHit(p); respawnCardPin(p);
+        continue;
+      }
+      if (p.type === 'mystery' && !p.hit) {
+        p.hit = true; p.alive = false;
+        onCardHit(p); respawnCardPin(p);
+        continue;
+      }
+
+      // bomb: 반사 + 주변 핀 폭발 제거
+      if (p.type === 'bomb' && !p.hit) {
+        p.hit = true; p.alive = false;
+        // 반사
+        const nx2 = dx / dist, ny2 = dy / dist;
+        const overlap2 = minDist - dist;
+        b.x += nx2 * overlap2 * 0.5;
+        b.y += ny2 * overlap2 * 0.5;
+        const dot2 = b.vx * nx2 + b.vy * ny2;
+        b.vx -= 2 * dot2 * nx2;
+        b.vy -= 2 * dot2 * ny2;
+        // 폭발 효과
+        const explodeR = p.r * 8;
+        let killed = 0;
+        for (const q of state.pins) {
+          if (!q.alive || q === p) continue;
+          const ex = q.x - p.x, ey = q.y - p.y;
+          if (Math.sqrt(ex*ex + ey*ey) < explodeR) {
+            q.alive = false; killed++;
+          }
+        }
+        const chipBonus = 80 + killed * 30;
+        state.chips += chipBonus;
+        spawnFloat(p.x, p.y, '+' + chipBonus + 'C 폭발!', '#f87171');
+        // 폭발 조커 보유 시 Mult ×2
+        if (state.jokers.some(j => j.effect === 'bomb')) {
+          state.jokerMult = Math.round(state.jokerMult * 2) + (state.jokerMult === 0 ? 4 : 0);
+          spawnFloat(p.x, p.y - 20, '×2 Mult!', '#c084fc');
+          renderJokerPanel();
+        }
+        updateHUD();
+        continue;
+      }
+
+      // normal/spring: 기존 반사
+      const nx = dx / dist, ny = dy / dist;
+      const overlap = minDist - dist;
+      b.x += nx * overlap * 0.5;
+      b.y += ny * overlap * 0.5;
+      const dot = b.vx * nx + b.vy * ny;
+      b.vx -= 2 * dot * nx;
+      b.vy -= 2 * dot * ny;
+      b.vx *= 0.95;
+      b.vy *= 0.95;
+      if (p.type === 'spring') {
+        // 스프링 업그레이드: 튕김 배율 강화
+        const springBounceMult = 1.6 + [0, 0.2, 0.4, 0][pinUpgrades.spring];
+        b.vy = -Math.abs(b.vy) * springBounceMult;
+        // 스프링: 콤보 ×2 점프
+        if (state.combo > 0) {
+          state.combo = Math.min(30, state.combo * 2);
+          spawnFloat(p.x, p.y - 18, 'COMBO ×2!', '#34d399');
+        }
+        state.comboTimer = Date.now();
+        let springChips = getComboChips() * 2;
+        // Lv3: 스프링 Chips ×2
+        if (pinUpgrades.spring >= 3) springChips *= 2;
+        state.chips += springChips;
+        spawnFloat(p.x, p.y, '+' + springChips + 'C ↑', '#34d399');
+      }
+      if (p.type === 'normal' && !p.hit) {
+        p.hit = true;
+        onNormalHit(p);
+        setTimeout(() => { p.hit = false; }, 400);
+      }
+    }
+  }
+}
+
+// --- HIT HANDLERS ---
+let consecutiveHits = 0;
+let lastHitTime = 0;
+
+function respawnCardPin(p) {
+  // replace with new random card or mystery pin after short delay
+  setTimeout(() => {
+    const roll = Math.random();
+    let newType, newSuit;
+    if (roll < 0.5) {
+      newType = 'card';
+      newSuit = SUITS[Math.floor(Math.random() * 4)];
+    } else {
+      newType = 'mystery';
+      newSuit = null;
+    }
+    const idx = state.pins.indexOf(p);
+    if (idx !== -1) {
+      state.pins[idx] = mkPin(p.x, p.y, newType, newSuit);
+    } else {
+      state.pins.push(mkPin(p.x, p.y, newType, newSuit));
+    }
+  }, 800);
+}
+
+// 5장 이상이면 최고 족보 5장만 남기고 나머지 버리기
+function trimTobestHand(newCard) {
+  const full = [...state.hand, newCard];
+  if (full.length < 5) return full;
+
+  // 5장짜리 조합 중 최고 족보 찾기
+  const combos = getCombinations(full, 5);
+  let bestCombo = null, bestScore = -1;
+  const handOrder = ['하이카드','원페어','투페어','트리플','스트레이트','플러시','풀하우스','포카드','스트레이트 플러시','로얄 플러시'];
+  for (const combo of combos) {
+    const h = getBestHand(combo);
+    const score = handOrder.indexOf(h.name);
+    if (score > bestScore) { bestScore = score; bestCombo = combo; }
+  }
+  return bestCombo || full.slice(0, 5);
+}
+
+function getCombinations(arr, k) {
+  if (k === 0) return [[]];
+  if (arr.length < k) return [];
+  const [first, ...rest] = arr;
+  const withFirst = getCombinations(rest, k - 1).map(c => [first, ...c]);
+  const withoutFirst = getCombinations(rest, k);
+  return [...withFirst, ...withoutFirst];
+}
+
+const COMBO_TIMEOUT = 1500; // 1.5초 이내 다음 타격해야 콤보 유지
+
+function getComboChips() {
+  const c = state.combo;
+  if (c >= 20) return 150;
+  if (c >= 10) return 60;
+  if (c >= 5)  return 25;
+  return 10;
+}
+
+function onNormalHit(p) {
+  const now = Date.now();
+  const elapsed = now - state.comboTimer;
+
+  if (elapsed < COMBO_TIMEOUT && state.comboTimer > 0) {
+    state.combo++;
+  } else {
+    state.combo = 1;
+  }
+  state.comboTimer = now;
+
+  // 피버 모드 진입/유지
+  const wasFever = state.fever;
+  state.fever = state.combo >= 20;
+  if (state.combo >= 20 && !wasFever) {
+    enterFeverMode('Chips × 1.5');
+    return; // 피버 인트로 중 이후 처리는 재개 후 자연히 진행
+  }
+
+  // Chips 계산 (일반 핀 업그레이드 반영)
+  let chipGain = getComboChips();
+  const normalUpgBonuses = [0, 5, 12, 25];
+  chipGain += normalUpgBonuses[pinUpgrades.normal] || 0;
+  if (state.fever) chipGain = Math.round(chipGain * 1.5);
+  state.chips += chipGain;
+
+  // 플로팅 텍스트 색상: 콤보 단계별
+  const col = state.combo >= 20 ? '#f87171' : state.combo >= 10 ? '#fbbf24' : state.combo >= 5 ? '#c084fc' : '#60a5fa';
+  const label = state.combo >= 5 ? '+' + chipGain + 'C x' + state.combo : '+' + chipGain + 'C';
+  spawnFloat(p.x, p.y, label, col);
+
+  // combo joker
+  const hasCombo = state.jokers.some(j => j.effect === 'combo');
+  if (hasCombo && state.combo % 3 === 0) {
+    state.jokerMult += 4;
+    state.comboCount++;
+    spawnFloat(p.x, p.y - 18, '+4M 콤보!', '#c084fc');
+    renderJokerPanel();
+  }
+  updateHUD();
+}
+
+function onCardHit(p) {
+  let card;
+  // 카드 핀 업그레이드: 인핸스먼트 확률 증가
+  const baseEnhChance = 0.25;
+  const enhBonus = [0, 0.10, 0.25, 0.25][pinUpgrades.card] || 0;
+  const enhChance = baseEnhChance + enhBonus;
+
+  if (p.type === 'mystery') {
+    card = drawFromDeck();
+    card.enhance = Math.random() < enhChance ? (['bonus','mult','glass'][Math.floor(Math.random()*3)]) : null;
+    spawnFloat(p.x, p.y - 20, '? → ' + card.rank + SUIT_SYM[card.suit], '#fbbf24');
+  } else {
+    const suitCards = state.deck.filter(c => c.suit === p.suit && !c.used);
+    if (suitCards.length) {
+      const picked = suitCards[Math.floor(Math.random() * suitCards.length)];
+      picked.used = true;
+      card = { rank: picked.rank, suit: picked.suit, enhance: Math.random() < enhChance ? (['bonus','mult','glass'][Math.floor(Math.random()*3)]) : null };
+    } else {
+      card = drawFromDeck();
+      card.enhance = null;
+    }
+  }
+
+  if (card.suit === 'heart' && state.jokers.some(j => j.effect === 'heart')) {
+    state.jokerMult += 5;
+    state.heartHits++;
+    spawnFloat(p.x, p.y - 18, '+5M ♥', '#f87171');
+    renderJokerPanel();
+  }
+
+  // flush hunter joker
+  const suitCounts = {};
+  [...state.hand, {suit: card.suit}].forEach(c => suitCounts[c.suit] = (suitCounts[c.suit]||0)+1);
+  if (state.jokers.some(j => j.effect === 'flush') && Object.values(suitCounts).some(v => v >= 3)) {
+    state.chips += 15;
+    spawnFloat(p.x, p.y + 18, '+15C 플러시!', '#34d399');
+  }
+
+  // 카드 핀 Lv3: 카드 드롭 시 +20 Chips
+  if (pinUpgrades.card >= 3) {
+    state.chips += 20;
+    spawnFloat(p.x, p.y - 20, '+20C 카드업!', '#c084fc');
+  }
+
+  // 피버(목표 초과) 중엔 7장까지 허용, 아니면 5장 초과 시 자동 정리
+  const maxHand = state.fever ? 7 : 5;
+  if (state.hand.length >= maxHand - 1) {
+    const trimmed = trimTobestHand(card);
+    const discarded = state.hand.length + 1 - trimmed.length;
+    state.hand = trimmed;
+    if (discarded > 0) {
+      spawnFloat(p.x, p.y - 36, '최적 패 정리! -' + discarded + '장', '#c084fc');
+    }
+  } else {
+    state.hand.push(card);
+  }
+
+  showCardNotif(card.rank + SUIT_SYM[card.suit]);
+  updateDeckBtn();
+  renderHand();
+  updateHUD();
+}
+
+// --- STAGE RECORDS ---
+const RECORD_KEY = 'pinfall_stage_records';
+
+function loadRecords() {
+  try { return JSON.parse(localStorage.getItem(RECORD_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveRecords(records) {
+  try { localStorage.setItem(RECORD_KEY, JSON.stringify(records)); } catch {}
+}
+
+const runBestScores = {};
+
+function updateRunScore(stageIdx, score) {
+  if (!runBestScores[stageIdx] || score > runBestScores[stageIdx]) {
+    runBestScores[stageIdx] = score;
+  }
+}
+
+function flushRunToRecords() {
+  const records = loadRecords();
+  const newBests = [];
+  for (const [si, score] of Object.entries(runBestScores)) {
+    const key = 'stage_' + si;
+    if (!records[key] || score > records[key]) {
+      records[key] = score;
+      newBests.push(Number(si));
+    }
+  }
+  saveRecords(records);
+  return newBests;
+}
+
+function formatScore(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return (n / 1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function renderRecordsPanel(newBests) {
+  const panel = document.getElementById('res-records');
+  const grid  = document.getElementById('res-records-grid');
+  if (!panel || !grid) return;
+  panel.style.display = 'block';
+  grid.innerHTML = '';
+  const records = loadRecords();
+  for (let i = 0; i < 8; i++) {
+    const score   = records['stage_' + i] || 0;
+    const isNew   = newBests.includes(i);
+    const reached = runBestScores[i] !== undefined;
+    const cell = document.createElement('div');
+    cell.style.cssText = [
+      'border-radius:4px', 'padding:5px 4px', 'text-align:center',
+      "font-family:'Space Mono',monospace",
+      'background:' + (isNew ? '#064e3b' : reached ? 'var(--bg3)' : 'var(--bg2)'),
+      'border:1px solid ' + (isNew ? '#34d399' : 'var(--border)'),
+    ].join(';');
+    cell.innerHTML =
+      '<div style="font-size:9px;color:' + (isNew ? '#34d399' : 'var(--muted)') + ';font-weight:700;margin-bottom:2px">ST' + (i+1) + (isNew ? ' ★' : '') + '</div>' +
+      '<div style="font-size:10px;color:' + (isNew ? '#6ee7b7' : reached ? 'var(--text)' : 'var(--muted)') + ';font-weight:' + (isNew ? '700' : '400') + '">' +
+      (score > 0 ? formatScore(score) : '—') + '</div>';
+    grid.appendChild(cell);
+  }
+}
+
+// --- FEVER INTRO ---
+function enterFeverMode(label) {
+  if (state.fever) return; // 이미 피버면 스킵
+  state.fever = true;
+  state.combo = Math.max(state.combo, 20);
+  state.comboTimer = Date.now();
+
+  // 콤보 달성 피버만 홀 차단 (목표 초과 피버는 홀 유지)
+  const isTargetFever = label && label.includes('목표');
+  const isComboFever  = !isTargetFever;
+  if (isComboFever) {
+    state.holeBlocked = true;
+    spawnFloat(canvas.width/2, canvas.height * 0.75, '🚫 홀 차단!', '#f87171');
+  }
+
+  // 게임 일시 정지
+  state.phase = 'paused_fever';
+
+  const intro       = document.getElementById('fever-intro');
+  const clearStage  = document.getElementById('fever-clear-stage');
+  const feverStage  = document.getElementById('fever-fever-stage');
+  const clearScore  = document.getElementById('fever-clear-score');
+  const sub         = document.getElementById('fever-sub');
+
+  if (!intro) return;
+  intro.style.display = 'flex';
+
+  if (isTargetFever) {
+    // 2단계 연출: 클리어 → 피버
+    // 1단계: CLEAR 표시 (0.8초)
+    if (clearStage) clearStage.style.display = 'flex';
+    if (feverStage) feverStage.style.display = 'none';
+    if (clearScore) {
+      const { finalScore } = calcFinalScore();
+      clearScore.textContent = finalScore.toLocaleString() + ' pts';
+    }
+    setTimeout(() => {
+      // 2단계: FEVER MODE 표시 (0.8초)
+      if (clearStage) clearStage.style.display = 'none';
+      if (feverStage) feverStage.style.display = 'flex';
+      if (sub) sub.textContent = 'Chips × 1.5  |  6장 족보 활성화';
+      setTimeout(() => {
+        intro.style.display = 'none';
+        if (clearStage) clearStage.style.display = 'none';
+        if (feverStage) feverStage.style.display = 'none';
+        state.phase = 'fly';
+        state.comboTimer = Date.now();
+      }, 800);
+    }, 800);
+  } else {
+    // 콤보 피버: 기존 1단계 연출
+    if (clearStage) clearStage.style.display = 'none';
+    if (feverStage) feverStage.style.display = 'flex';
+    if (sub) sub.textContent = label || 'Chips × 1.5';
+    setTimeout(() => {
+      intro.style.display = 'none';
+      if (feverStage) feverStage.style.display = 'none';
+      state.phase = 'fly';
+      state.comboTimer = Date.now();
+    }, 1000);
+  }
+}
+function triggerOrbital(p, b) {
+  // 콤보 +5 즉시 증가
+  state.combo = Math.min(30, state.combo + 5);
+  state.comboTimer = Date.now();
+  state.fever = state.combo >= 20;
+  // 스프링/일반 핀 원래 타입 저장 후 스타 핀으로 변환
+  p._baseType = p.type;
+  p.type = 'star';
+  p.alive = true;
+  spawnFloat(p.x, p.y - 24, '🌀 ORBITAL!', '#fbbf24');
+  spawnFloat(p.x, p.y, 'COMBO +5', '#c084fc');
+
+  // 스타 핀 생성 즉시 슬로우 — nearStar 감지 딜레이 없이 바로 적용
+  state._starSlowmo = true;
+  state.slowmo = true;
+
+  // 오비탈 탈출 부스트 — 핀에서 공 방향으로 튕겨내기
+  if (b) {
+    const ex = b.x - p.x, ey = b.y - p.y;
+    const ed = Math.sqrt(ex*ex + ey*ey);
+    if (ed > 0.1) {
+      const nx = ex / ed, ny = ey / ed;
+      const currentSpeed = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+      const boostSpeed = Math.max(currentSpeed, 6);
+      b.vx = nx * boostSpeed * 0.8;
+      b.vy = Math.min(-3, ny * boostSpeed * 0.8 - 3);
+    }
+  }
+
+  updateHUD();
+}
+let notifTimer;
+function showCardNotif(text) {
+  const el = document.getElementById('card-notif');
+  el.textContent = '카드 획득! ' + text;
+  el.classList.add('show');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 1200);
+}
+
+// --- FLOATING TEXT ---
+function spawnFloat(x, y, text, color) {
+  const container = document.getElementById('floats');
+  const rect = canvas.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  const appRect = document.getElementById('app').getBoundingClientRect();
+
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const el = document.createElement('div');
+  el.className = 'float-chip';
+  el.textContent = text;
+  el.style.color = color;
+  el.style.left = (x / scaleX + (rect.left - appRect.left)) + 'px';
+  el.style.top  = (y / scaleY + (rect.top  - appRect.top))  + 'px';
+  container.appendChild(el);
+
+  let fy = 0, opacity = 1;
+  let raf;
+  function anim() {
+    fy -= 1.2;
+    opacity -= 0.025;
+    el.style.transform = `translateY(${fy}px)`;
+    el.style.opacity = opacity;
+    if (opacity > 0) raf = requestAnimationFrame(anim);
+    else el.remove();
+  }
+  raf = requestAnimationFrame(anim);
+}
+
+// --- HAND RENDER ---
+function renderHand() {
+  const row = document.getElementById('cards-row');
+  row.innerHTML = '';
+  state.hand.forEach((c, i) => {
+    const wrap2 = document.createElement('div');
+    wrap2.className = 'pcard ' + c.suit;
+    // wild 카드는 금색 테두리
+    if (c.wild) wrap2.style.cssText = 'border-color:#fbbf24;border-width:2px;';
+    wrap2.innerHTML = `<span class="cr">${c.rank}</span><span class="cs">${c.wild ? '★' : SUIT_SYM[c.suit]}</span><span class="cr-bot">${c.rank}</span>`;
+    if (c.wild) {
+      const wb = document.createElement('div');
+      wb.style.cssText = 'position:absolute;top:1px;left:2px;font-size:7px;color:#fbbf24;font-weight:700;font-family:Space Mono,monospace';
+      wb.textContent = 'W';
+      wrap2.appendChild(wb);
+    }
+    if (c.enhance) {
+      const eb = document.createElement('div');
+      eb.className = 'eb eb-' + c.enhance;
+      eb.textContent = c.enhance === 'bonus' ? '+C' : c.enhance === 'mult' ? '+M' : '×M';
+      wrap2.appendChild(eb);
+    }
+    row.appendChild(wrap2);
+  });
+  for (let i = state.hand.length; i < 7; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'pcard-slot';
+    row.appendChild(slot);
+  }
+  document.getElementById('hand-count').textContent = state.hand.length;
+}
+
+// --- POKER HAND EVAL ---
+function getBestHand(cards) {
+  if (!cards.length) return {name:'하이카드', ...HAND_DATA['하이카드']};
+
+  // 6장 특수 족보 — 목표 초과(피버) 상태이고 손패 6장 이상일 때
+  if (cards.length >= 6 && state.fever) {
+    const special = evalSpecialHand6(cards);
+    if (special) return special;
+  }
+
+  // wild 카드는 최적 무늬로 교체해서 평가
+  const wilds = cards.filter(c => c.wild);
+  const normals = cards.filter(c => !c.wild);
+
+  if (!wilds.length) return evalHand(cards);
+
+  const suitCount = {};
+  normals.forEach(c => suitCount[c.suit] = (suitCount[c.suit]||0)+1);
+  const topSuit = Object.keys(suitCount).sort((a,b)=>suitCount[b]-suitCount[a])[0] || 'heart';
+  const expanded = [
+    ...normals,
+    ...wilds.map(w => ({...w, suit: topSuit, wild: true}))
+  ];
+  return evalHand(expanded);
+}
+
+// 6장 특수 족보 판정
+function evalSpecialHand6(cards) {
+  const suits    = cards.map(c => c.suit);
+  const rankVals = cards.map(c => RANK_VAL[c.rank]).sort((a,b) => a-b);
+  const rc = {};
+  cards.forEach(c => rc[c.rank] = (rc[c.rank]||0)+1);
+  const counts = Object.values(rc).sort((a,b) => b-a);
+  const uniq = [...new Set(rankVals)].sort((a,b) => a-b);
+
+  // 풀 플러시: 같은 무늬 6장
+  const suitCounts = {};
+  suits.forEach(s => suitCounts[s] = (suitCounts[s]||0)+1);
+  if (Object.values(suitCounts).some(v => v >= 6))
+    return {name:'풀 플러시', ...HAND_DATA['풀 플러시']};
+
+  // 더블 스트레이트: 연속 6장
+  if (uniq.length >= 6) {
+    let streak = 1, maxS = 1;
+    for (let i = 1; i < uniq.length; i++) {
+      if (uniq[i] === uniq[i-1]+1) { streak++; maxS = Math.max(maxS, streak); }
+      else streak = 1;
+    }
+    if (maxS >= 6) return {name:'더블 스트레이트', ...HAND_DATA['더블 스트레이트']};
+  }
+
+  // 트리플 트리플: 3장 + 3장
+  if (counts[0] >= 3 && counts[1] >= 3)
+    return {name:'트리플 트리플', ...HAND_DATA['트리플 트리플']};
+
+  // 더블 풀하우스: 트리플 + 페어 + 페어
+  if (counts[0] >= 3 && counts[1] >= 2 && counts[2] >= 2)
+    return {name:'더블 풀하우스', ...HAND_DATA['더블 풀하우스']};
+
+  return null; // 해당 없으면 일반 5장 판정으로 넘어감
+}
+
+function evalHand(cards) {
+  const suits = cards.map(c => c.suit);
+  const rankVals = cards.map(c => RANK_VAL[c.rank]).sort((a,b) => a-b);
+  const allSame = suits.every(s => s === suits[0]);
+  const rc = {};
+  cards.forEach(c => rc[c.rank] = (rc[c.rank]||0)+1);
+  const counts = Object.values(rc).sort((a,b) => b-a);
+  const uniq = [...new Set(rankVals)].sort((a,b)=>a-b);
+  let isSeq = false;
+  if (uniq.length >= 5) {
+    let streak = 1, maxS = 1;
+    for (let i = 1; i < uniq.length; i++) {
+      if (uniq[i] === uniq[i-1]+1) { streak++; maxS = Math.max(maxS,streak); }
+      else streak = 1;
+    }
+    isSeq = maxS >= 5;
+  }
+  const hasRoyal = ['A','K','Q','J','10'].every(r => cards.find(c => c.rank===r));
+
+  if (cards.length >= 5) {
+    if (allSame && hasRoyal) return {name:'로얄 플러시', ...HAND_DATA['로얄 플러시']};
+    if (allSame && isSeq)   return {name:'스트레이트 플러시', ...HAND_DATA['스트레이트 플러시']};
+    if (counts[0] >= 4)     return {name:'포카드', ...HAND_DATA['포카드']};
+    if (counts[0] >= 3 && counts[1] >= 2) return {name:'풀하우스', ...HAND_DATA['풀하우스']};
+    if (allSame)            return {name:'플러시', ...HAND_DATA['플러시']};
+    if (isSeq)              return {name:'스트레이트', ...HAND_DATA['스트레이트']};
+  }
+  if (counts[0] >= 3) return {name:'트리플', ...HAND_DATA['트리플']};
+  if (counts[0] >= 2 && counts[1] >= 2) return {name:'투페어', ...HAND_DATA['투페어']};
+  if (counts[0] >= 2) return {name:'원페어', ...HAND_DATA['원페어']};
+  return {name:'하이카드', ...HAND_DATA['하이카드']};
+}
+
+// --- TURN DOTS ---
+function updateTurnDots() {
+  for (let d = 1; d <= 3; d++) {
+    const dot = document.getElementById('turn-dot-' + d);
+    if (!dot) continue;
+    if (d < state.turn) {
+      dot.style.background = '#60a5fa'; dot.style.borderColor = '#60a5fa';
+    } else if (d === state.turn) {
+      dot.style.background = 'var(--chip-col)'; dot.style.borderColor = 'var(--chip-col)';
+    } else {
+      dot.style.background = 'var(--bg3)'; dot.style.borderColor = 'var(--border)';
+    }
+  }
+}
+
+// --- HUD ---
+function updateHUD() {
+  const best = getBestHand(state.hand);
+  const enhChips = state.hand.reduce((a,c) => a + (c.enhance==='bonus'?30:0), 0);
+  const enhMult  = state.hand.reduce((a,c) => a + (c.enhance==='mult'?4:0), 0);
+  const glassX   = state.hand.filter(c=>c.enhance==='glass').length;
+  const pb       = planetBonus[best.name] || {chips:0, mult:0};
+  const totalChips = state.chips + state.totalChipsBank + best.chips + pb.chips + enhChips;
+  const baseMult   = best.mult + pb.mult + state.jokerMult + enhMult;
+  const glassBonus = glassX > 0 ? Math.pow(2, glassX) : 1;
+  const totalMult  = baseMult * glassBonus;
+  const finalScore = Math.round(totalChips * totalMult * best.xmult);
+
+  document.getElementById('hchips').textContent = state.chips.toLocaleString();
+  document.getElementById('hmult').textContent = '×' + totalMult.toFixed(1);
+  document.getElementById('hscore').textContent = finalScore.toLocaleString();
+  document.getElementById('hstage').textContent = (state.stage + 1);
+
+  // 턴 표시
+  document.getElementById('hturn').textContent = state.turn + ' / 3';
+  updateTurnDots();
+
+  // live score in hand panel
+  const scoreLabel  = document.getElementById('hand-score-label');
+  const scoreVal    = document.getElementById('hand-score-val');
+  const bestHandEl  = document.getElementById('best-hand');
+  const handInfoRow = document.getElementById('hand-info-row');
+  const nextHint    = document.getElementById('next-hand-hint');
+
+  if (state.hand.length > 0) {
+    if (handInfoRow) handInfoRow.style.display = 'block';
+    if (bestHandEl)  bestHandEl.textContent = best.name;
+    if (scoreVal) {
+      scoreVal.textContent = finalScore.toLocaleString();
+      const target0 = STAGE_TARGETS[state.stage] || 999999;
+      const pct0 = Math.min(100, finalScore / target0 * 100);
+      scoreVal.style.color = pct0 >= 100 ? '#fbbf24' : pct0 >= 60 ? '#34d399' : 'var(--green)';
+    }
+    if (scoreLabel) scoreLabel.textContent = totalChips.toLocaleString() + ' × ' + totalMult.toFixed(1) + ' × ' + best.xmult;
+    // 다음 족보 안내
+    const nextHand = getNextBetterHand(best.name);
+    if (nextHint) {
+      if (nextHand) {
+        nextHint.style.display = 'block';
+        nextHint.textContent = '▲ 다음: ' + nextHand;
+      } else {
+        nextHint.style.display = 'none';
+      }
+    }
+  } else {
+    if (handInfoRow) handInfoRow.style.display = 'none';
+  }
+
+  const roundMult = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
+  const target = Math.round((STAGE_TARGETS[state.stage] || 999999) * roundMult);
+  const pct = Math.min(100, finalScore / target * 100);
+  const roundNames = ['1라운드','2라운드','보스라운드'];
+  document.getElementById('stage-fill').style.width = pct + '%';
+  document.getElementById('round-name').textContent = roundNames[state.roundIdx] || '라운드';
+  document.getElementById('stage-pct').textContent = finalScore.toLocaleString() + ' / ' + target.toLocaleString();
+
+  // 목표 초과 시 피버 강제 진입 + HUD 금색
+  if (state.phase === 'fly' && finalScore >= target) {
+    if (scoreVal) scoreVal.style.color = '#fbbf24';
+    if (!state.fever) {
+      enterFeverMode('🎯 목표 달성!  Chips × 1.5');
+    }
+  }
+}
+
+// --- RESULT ---
+function calcFinalScore() {
+  const hand = state.hand;
+  const best = getBestHand(hand);
+
+  // planetBonus 적용
+  const pb = planetBonus[best.name] || {chips:0, mult:0};
+
+  const enhChips = hand.reduce((a,c) => a + (c.enhance==='bonus'?30:0), 0);
+  const enhMult  = hand.reduce((a,c) => a + (c.enhance==='mult'?4:0), 0);
+  const glassX   = hand.filter(c=>c.enhance==='glass').length;
+
+  let baseChips = state.chips + state.totalChipsBank + best.chips + pb.chips + enhChips;
+  let baseMult  = best.mult + pb.mult + state.jokerMult + enhMult;
+
+  // joker effects on score
+  for (const j of state.jokers) {
+    if (j.effect === 'ace') {
+      const hasAce = hand.some(c => c.rank === 'A');
+      if (hasAce) baseChips = Math.round(baseChips * 1.5);
+    }
+    if (j.effect === 'straight') {
+      const vals = [...new Set(hand.map(c=>RANK_VAL[c.rank]))].sort((a,b)=>a-b);
+      let seq=1, max=1;
+      for (let i=1;i<vals.length;i++) { if(vals[i]===vals[i-1]+1){seq++;max=Math.max(max,seq);}else seq=1; }
+      if (max >= 4) baseMult = Math.round(baseMult * 3);
+    }
+    // bomb: jokerMult에 이미 누적됨 (폭발 시 실시간 적용)
+  }
+
+  const glassBonus = glassX > 0 ? Math.pow(2, glassX) : 1;
+  const totalMult  = baseMult * glassBonus;
+  const finalScore = Math.round(baseChips * totalMult * best.xmult);
+  return { best, enhChips, enhMult, glassX, totalChips: baseChips, baseMult, glassBonus, totalMult, finalScore, pb };
+}
+
+function triggerClear(finalScore, target) {
+  state.phase = 'result';
+  state.ball = null;
+  state.totalChipsBank += state.chips;
+  const { finalScore: fs } = calcFinalScore();
+  // 클리어 시 현재 스테이지 점수 기록
+  updateRunScore(state.stage, fs);
+  showResultScreen('clear', fs, target);
+}
+
+function triggerResult() {
+  state.ball = null;
+  state.totalChipsBank += state.chips;
+  state.chips = 0;
+
+  const { finalScore } = calcFinalScore();
+  const roundMult2 = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
+  const target = Math.round((STAGE_TARGETS[state.stage] || 999999) * roundMult2);
+
+  if (finalScore >= target) {
+    state.phase = 'result';
+    updateRunScore(state.stage, finalScore);
+    showResultScreen('clear', finalScore, target);
+    return;
+  }
+
+  if (state.turn >= 3) {
+    state.phase = 'result';
+    // 게임오버 — 현재 스테이지 점수도 기록 후 패널 표시
+    updateRunScore(state.stage, finalScore);
+    const newBests = flushRunToRecords();
+    showResultScreen('gameover', finalScore, target, newBests);
+    return;
+  }
+
+  // 턴 증가 후 바로 재발사 준비 (결과화면 없음)
+  state.turn += 1;
+  state.phase = 'aim';
+  state.charging = false; state.chargeVal = 0; state.chargeDir = 1;
+  consecutiveHits = 0;
+  state.holeBlocked = false;
+  // 핀 orbital / _orbitAcc 플래그 초기화 — 다음 턴에서 재발동 가능
+  state.pins.forEach(p => { p.orbital = false; p._orbitAcc = null; p._baseType = null; p._starAcc = null; });
+  state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
+  updateTurnDots();
+  updateHUD();
+  // 낙하 알림 플로팅 텍스트
+  const W = canvas.width, H = canvas.height;
+  spawnFloat(W / 2, H * 0.5, '턴 ' + state.turn + ' / 3', '#60a5fa');
+}
+
+function showResultScreen(mode, finalScore, target, newBests) {
+  newBests = newBests || [];
+  // mode: 'turn' | 'clear' | 'gameover'
+  const hand = state.hand;
+  const { best, enhChips, enhMult, glassX, totalChips, totalMult } = calcFinalScore();
+
+  // 타이틀
+  const titleEl = document.getElementById('res-title');
+  if (mode === 'clear') {
+    titleEl.textContent = '✓ 블라인드 클리어!';
+    titleEl.style.color = '#34d399';
+  } else if (mode === 'gameover') {
+    titleEl.textContent = '턴 종료 — 목표 미달';
+    titleEl.style.color = 'var(--red)';
+  } else {
+    titleEl.textContent = '턴 ' + state.turn + ' 종료 — 구멍 낙하';
+    titleEl.style.color = 'var(--muted)';
+  }
+
+  // clear banner
+  const banner = document.getElementById('res-clear-banner');
+  if (mode === 'clear') {
+    const roundNames = ['1라운드','2라운드','보스라운드'];
+    banner.textContent = '스테이지 ' + (state.stage+1) + ' — ' + roundNames[state.roundIdx] + ' 클리어  ' + finalScore.toLocaleString() + ' / ' + target.toLocaleString();
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+
+  // 턴 도트
+  for (let d = 1; d <= 3; d++) {
+    const dot = document.getElementById('res-dot-' + d);
+    if (dot) {
+      if (d < state.turn) { dot.style.background = '#60a5fa'; dot.style.borderColor = '#60a5fa'; }
+      else if (d === state.turn) { dot.style.background = mode === 'gameover' ? 'var(--red)' : 'var(--chip-col)'; dot.style.borderColor = mode === 'gameover' ? 'var(--red)' : 'var(--chip-col)'; }
+      else { dot.style.background = 'var(--bg3)'; dot.style.borderColor = 'var(--border)'; }
+    }
+  }
+  const turnLabel = document.getElementById('res-turn-label');
+  if (turnLabel) {
+    if (mode === 'turn') turnLabel.textContent = '남은 턴: ' + (3 - state.turn) + '턴';
+    else if (mode === 'gameover') turnLabel.textContent = '3턴 모두 소진';
+    else turnLabel.textContent = '클리어!';
+  }
+
+  document.getElementById('res-hand-name').textContent = best.name;
+  document.getElementById('res-hand-sub').textContent =
+    hand.map(c => c.rank + SUIT_SYM[c.suit]).join(' ') || '(카드 없음)';
+
+  // 카드 렌더
+  const resCards = document.getElementById('res-cards');
+  resCards.innerHTML = '';
+  hand.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'pcard ' + c.suit;
+    el.style.cursor = 'default';
+    el.innerHTML = `<span class="cr">${c.rank}</span><span class="cs">${c.wild ? '★' : SUIT_SYM[c.suit]}</span><span class="cr-bot">${c.rank}</span>`;
+    if (c.enhance) {
+      const eb = document.createElement('div');
+      eb.className = 'eb eb-' + c.enhance;
+      eb.textContent = c.enhance==='bonus'?'+C':c.enhance==='mult'?'+M':'×M';
+      el.appendChild(eb);
+    }
+    resCards.appendChild(el);
+  });
+
+  document.getElementById('rc-pin').textContent = '+' + (state.totalChipsBank).toLocaleString() + (mode === 'turn' ? ' (누적)' : '');
+  document.getElementById('rc-base').textContent = '+' + best.chips;
+  document.getElementById('rc-enh').textContent = '+' + enhChips + (glassX > 0 ? ' +×' + Math.pow(2,glassX) + '(글래스)' : '');
+  document.getElementById('rc-chips').textContent = totalChips.toLocaleString();
+  document.getElementById('rc-hmult').textContent = '×' + best.mult;
+  document.getElementById('rc-jmult').textContent = '+' + (state.jokerMult + enhMult);
+  document.getElementById('rc-xmult').textContent = '×' + best.xmult + ' (' + best.name + ')';
+  document.getElementById('rc-final').textContent = finalScore.toLocaleString();
+
+  const missEl   = document.getElementById('res-miss');
+  const shopBtn  = document.getElementById('res-shop');
+  const retryBtn = document.getElementById('res-retry');
+
+  shopBtn.style.display = 'none';
+
+  if (mode === 'clear') {
+    missEl.textContent = '상점에서 조커와 카드를 구매하고 다음 블라인드를 준비하세요.';
+    missEl.style.color = '#34d399';
+    shopBtn.style.display = 'block';
+    retryBtn.textContent = '다시 시작';
+    const recPanel = document.getElementById('res-records');
+    if (recPanel) recPanel.style.display = 'none';
+  } else {
+    // gameover
+    const need = target - finalScore;
+    const nextHand = getNextBetterHand(best.name);
+    let msg = '3턴 모두 소진 — 목표까지 ' + need.toLocaleString() + '점 부족';
+    if (nextHand) {
+      const ns = Math.round(totalChips * totalMult * HAND_DATA[nextHand].xmult);
+      msg += '\n' + nextHand + '이었다면 약 ' + ns.toLocaleString() + '점';
+    }
+    missEl.textContent = msg;
+    missEl.style.color = 'var(--red)';
+    retryBtn.textContent = '다시 시작';
+    // 기록 패널 표시
+    renderRecordsPanel(newBests);
+  }
+
+  document.getElementById('result-screen').classList.add('show');
+}
+
+function getNextBetterHand(name) {
+  const order = ['하이카드','원페어','투페어','트리플','스트레이트','플러시','풀하우스','포카드','스트레이트 플러시','로얄 플러시','더블 풀하우스','트리플 트리플','더블 스트레이트','풀 플러시'];
+  const idx = order.indexOf(name);
+  return idx < order.length - 1 ? order[idx+1] : null;
+}
+
+// --- DRAW ---
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // D: 피버 모드 테두리 글로우
+  if (state.fever) {
+    const t = Date.now() / 200;
+    const alpha = 0.4 + Math.sin(t) * 0.25;
+    ctx.save();
+    ctx.strokeStyle = `rgba(248,113,113,${alpha})`;
+    ctx.lineWidth = 8;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+    ctx.strokeStyle = `rgba(251,191,36,${alpha * 0.6})`;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(10, 10, W - 20, H - 20);
+    ctx.restore();
+  } else if (state.combo >= 10) {
+    const t = Date.now() / 300;
+    const alpha = 0.2 + Math.sin(t) * 0.1;
+    ctx.save();
+    ctx.strokeStyle = `rgba(251,191,36,${alpha})`;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+    ctx.restore();
+  }
+
+  // background grid
+  ctx.strokeStyle = state.fever ? '#2d1a1a' : '#1e2533';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < W; x += 24) {
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 24) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+
+  // hole
+  const holeX = W/2, holeY = H, holeR = W*0.09;
+  ctx.beginPath();
+  ctx.arc(holeX, holeY, holeR, Math.PI, 0);
+  ctx.fillStyle = state.holeBlocked ? '#1a0a0a' : '#0a0d14';
+  ctx.fill();
+  ctx.strokeStyle = state.holeBlocked ? '#f87171' : '#374151';
+  ctx.lineWidth = state.holeBlocked ? 2.5 : 1.5;
+  ctx.stroke();
+  ctx.fillStyle = state.holeBlocked ? '#f87171' : '#6b7280';
+  ctx.font = state.holeBlocked ? 'bold 10px Space Mono, monospace' : '10px Space Mono, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(state.holeBlocked ? '🚫 BLOCKED' : 'HOLE', holeX, holeY - holeR/2 - 2);
+
+  // flipper draw — diagonal trapezoid, MAX(gold) / SLIDE(gray) zones
+  const flipBaseH = 21;
+  const flipTopH  = 37;
+  const holeEdgeY = H - flipBaseH;
+  const wallEdgeY = H - flipTopH;
+
+  // Left flipper
+  {
+    const x0 = 0, x1 = holeX - holeR;
+    const maxRatio = 0.5 + pinUpgrades.max_box * 0.1;
+    const midX = x0 + (x1 - x0) * maxRatio;
+    const topAtX0  = wallEdgeY;
+    const topAtMid = wallEdgeY + (holeEdgeY - wallEdgeY) * maxRatio;
+    const topAtX1  = holeEdgeY;
+
+    // MAX zone (wall side, x0→midX) — gold fill
+    ctx.beginPath();
+    ctx.moveTo(x0,   topAtX0);
+    ctx.lineTo(midX, topAtMid);
+    ctx.lineTo(midX, H);
+    ctx.lineTo(x0,   H);
+    ctx.closePath();
+    ctx.fillStyle = '#422006'; ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5;
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
+    ctx.fillText('MAX↑', x0 + (midX - x0) / 2, topAtX0 + (topAtMid - topAtX0) * 0.5 + 10);
+
+    // SLIDE zone (hole side, midX→x1) — dim fill
+    ctx.beginPath();
+    ctx.moveTo(midX, topAtMid);
+    ctx.lineTo(x1,   topAtX1);
+    ctx.lineTo(x1,   H);
+    ctx.lineTo(midX, H);
+    ctx.closePath();
+    ctx.fillStyle = '#1e2a1e'; ctx.strokeStyle = '#4b5563'; ctx.lineWidth = 1;
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
+    ctx.fillText('↘', midX + (x1 - midX) / 2, topAtMid + (topAtX1 - topAtMid) * 0.5 + 9);
+  }
+
+  // Right flipper
+  {
+    const x0 = holeX + holeR, x1 = W;
+    const maxRatio = 0.5 + pinUpgrades.max_box * 0.1;
+    const slideRatio = 1 - maxRatio;
+    const midX = x0 + (x1 - x0) * slideRatio;
+    const topAtX0  = holeEdgeY;
+    const topAtMid = holeEdgeY + (wallEdgeY - holeEdgeY) * slideRatio;
+    const topAtX1  = wallEdgeY;
+
+    // SLIDE zone (hole side, x0→midX)
+    ctx.beginPath();
+    ctx.moveTo(x0,   topAtX0);
+    ctx.lineTo(midX, topAtMid);
+    ctx.lineTo(midX, H);
+    ctx.lineTo(x0,   H);
+    ctx.closePath();
+    ctx.fillStyle = '#1e2a1e'; ctx.strokeStyle = '#4b5563'; ctx.lineWidth = 1;
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#6b7280'; ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
+    ctx.fillText('↙', x0 + (midX - x0) / 2, topAtX0 + (topAtMid - topAtX0) * 0.5 + 9);
+
+    // MAX zone (wall side, midX→x1)
+    ctx.beginPath();
+    ctx.moveTo(midX, topAtMid);
+    ctx.lineTo(x1,   topAtX1);
+    ctx.lineTo(x1,   H);
+    ctx.lineTo(midX, H);
+    ctx.closePath();
+    ctx.fillStyle = '#422006'; ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 1.5;
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 8px Space Mono,monospace'; ctx.textAlign = 'center';
+    ctx.fillText('↑MAX', midX + (x1 - midX) / 2, topAtMid + (topAtX1 - topAtMid) * 0.5 + 10);
+  }
+
+  // aim line (mouse-angle based)
+  if (state.phase === 'aim' && state.ball === null) {
+    const power = state.charging ? (30 + state.chargeVal * 0.7) : 30;
+    const speed = 4 + power * 0.16;
+    const flipBaseH2 = 21;
+    const originX = W / 2, originY = H - flipBaseH2 - 30;
+    const angle = state.aimAngle;
+
+    // clamp angle to upper half only (-170deg to -10deg)
+    const clampedAngle = Math.max(-Math.PI + 0.17, Math.min(-0.17, angle));
+
+    // simulate trajectory
+    let ax = originX, ay = originY;
+    let avx = Math.cos(clampedAngle) * speed;
+    let avy = Math.sin(clampedAngle) * speed;
+
+    ctx.setLineDash([5, 7]);
+    ctx.strokeStyle = '#34d399aa';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    for (let i = 0; i < 40; i++) {
+      avy += 0.18;
+      ax += avx; ay += avy;
+      if (ax < 0) { ax = 0; avx = Math.abs(avx); }
+      if (ax > W) { ax = W; avx = -Math.abs(avx); }
+      if (ay < 0) { ay = 0; avy = Math.abs(avy) * 0.8; }
+      if (ay > H) break;
+      ctx.lineTo(ax, ay);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // arrow head at origin pointing in aim direction
+    const arrowLen = 28;
+    const ex = originX + Math.cos(clampedAngle) * arrowLen;
+    const ey = originY + Math.sin(clampedAngle) * arrowLen;
+    ctx.beginPath();
+    ctx.moveTo(originX, originY);
+    ctx.lineTo(ex, ey);
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // arrowhead triangle
+    const headLen = 8, headAngle = 0.4;
+    ctx.beginPath();
+    ctx.moveTo(ex, ey);
+    ctx.lineTo(ex - headLen * Math.cos(clampedAngle - headAngle), ey - headLen * Math.sin(clampedAngle - headAngle));
+    ctx.lineTo(ex - headLen * Math.cos(clampedAngle + headAngle), ey - headLen * Math.sin(clampedAngle + headAngle));
+    ctx.closePath();
+    ctx.fillStyle = '#34d399';
+    ctx.fill();
+
+    // angle label
+    const deg = Math.round((clampedAngle * 180 / Math.PI + 90 + 360) % 360 - 180);
+    const sign = deg >= 0 ? '우' : '좌';
+    ctx.fillStyle = '#34d399cc';
+    ctx.font = '10px Space Mono, monospace';
+    ctx.textAlign = 'left';
+    const labelX = originX + 16;
+    const labelY = originY - 18;
+    ctx.fillText((Math.abs(deg)) + '° ' + sign, labelX, labelY);
+  }
+
+  // pins
+  for (const p of state.pins) {
+    if (!p.alive) continue;
+
+    // 깜빡이는 핀 투명도 처리
+    let pinAlpha = 1.0;
+    if (p.blink) {
+      if (!p.blinkOn) {
+        // 꺼짐 상태: 흐릿하게
+        pinAlpha = 0.18;
+      } else {
+        // 켜짐 상태: 꺼짐→켜짐 전환 직후 0.15초간 서서히 나타남
+        const fadeIn = Math.min(1.0, p.blinkTimer / 150);
+        pinAlpha = 0.18 + fadeIn * 0.82;
+      }
+    }
+    ctx.save();
+    ctx.globalAlpha = pinAlpha;
+
+    // 움직이는 핀 — 일반 핀 스타일 + 움직임 표시
+    if (p.moving) {
+      const t = Date.now() / 600;
+      const pulse = 1 + Math.sin(t) * 0.1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * pulse, 0, Math.PI*2);
+      ctx.fillStyle = '#1e2533';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2;
+      ctx.fill(); ctx.stroke();
+      // 이동 범위 선
+      ctx.beginPath();
+      ctx.moveTo(p.baseX - p.moveRange, p.y);
+      ctx.lineTo(p.baseX + p.moveRange, p.y);
+      ctx.strokeStyle = '#fbbf2444';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 7px Space Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('↔', p.x, p.y + 3);
+      ctx.restore();
+      continue;
+    }
+
+    if (p.type === 'magnet_pull' || p.type === 'magnet_push') {
+      const isPull = p.type === 'magnet_pull';
+      const col   = isPull ? '#60a5fa' : '#fb923c';
+      const bgCol = isPull ? '#1e3a5f' : '#431407';
+      const t3 = Date.now() / 400;
+      const pulse = 1 + Math.sin(t3) * 0.12;
+      // 영향 범위 희미하게 표시
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * 7, 0, Math.PI * 2);
+      ctx.strokeStyle = col + '22';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // 핀 본체
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = bgCol;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 2;
+      ctx.fill(); ctx.stroke();
+      // 회전 화살표 — 인력은 안으로, 척력은 밖으로
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + t3 * (isPull ? 0.8 : -0.8);
+        const r1 = isPull ? p.r * 1.9 : p.r * 1.2;
+        const r2 = isPull ? p.r * 1.2 : p.r * 1.9;
+        ctx.beginPath();
+        ctx.moveTo(p.x + Math.cos(a) * r1, p.y + Math.sin(a) * r1);
+        ctx.lineTo(p.x + Math.cos(a) * r2, p.y + Math.sin(a) * r2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = col;
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(isPull ? '🧲' : '⊕', p.x, p.y + 3);
+
+    } else if (p.type === 'bomb') {
+      // 폭발 핀 — 빨간 원, 회전 방사선
+      const t2 = Date.now() / 300;
+      const pulse = 1 + Math.sin(t2) * 0.15;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = '#7f1d1d';
+      ctx.strokeStyle = '#f87171';
+      ctx.lineWidth = 2;
+      ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = '#f87171';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + t2 * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x + Math.cos(a) * p.r, p.y + Math.sin(a) * p.r);
+        ctx.lineTo(p.x + Math.cos(a) * p.r * 1.9, p.y + Math.sin(a) * p.r * 1.9);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#f87171';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('!', p.x, p.y + 3);
+
+    } else if (p.type === 'star') {
+      // 골드 핀 — 금빛 반짝임
+      const tg = Date.now() / 200;
+      const pulse = 1 + Math.sin(tg) * 0.2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = '#422006';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 2.5;
+      ctx.fill(); ctx.stroke();
+      // 빛 방사선
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2 + tg * 0.3;
+        ctx.beginPath();
+        ctx.moveTo(p.x + Math.cos(a) * p.r * 1.2, p.y + Math.sin(a) * p.r * 1.2);
+        ctx.lineTo(p.x + Math.cos(a) * p.r * 2.2, p.y + Math.sin(a) * p.r * 2.2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('⭐', p.x, p.y + 3);
+
+    } else if (p.type === 'card') {
+      const col = {heart:'#f87171',diamond:'#60a5fa',club:'#34d399',spade:'#c084fc'}[p.suit];
+      const bg  = {heart:'#7f1d1d',diamond:'#1e3a5f',club:'#064e3b',spade:'#3b1f6e'}[p.suit];
+      // 마름모
+      ctx.beginPath();
+      ctx.moveTo(p.x,         p.y - p.r * 1.3);
+      ctx.lineTo(p.x + p.r,   p.y);
+      ctx.lineTo(p.x,         p.y + p.r * 1.3);
+      ctx.lineTo(p.x - p.r,   p.y);
+      ctx.closePath();
+      ctx.fillStyle = bg;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1.5;
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(SUIT_SYM[p.suit], p.x, p.y + 3);
+
+    } else if (p.type === 'mystery') {
+      // 반짝이는 별 형태
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      const t = Date.now() / 400;
+      ctx.rotate(Math.sin(t) * 0.3);
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = (i * 4 * Math.PI / 5) - Math.PI / 2;
+        const ai = a + Math.PI / 5;
+        ctx.lineTo(Math.cos(a) * p.r * 1.2, Math.sin(a) * p.r * 1.2);
+        ctx.lineTo(Math.cos(ai) * p.r * 0.5, Math.sin(ai) * p.r * 0.5);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#422006';
+      ctx.strokeStyle = '#fbbf24';
+      ctx.lineWidth = 1.5;
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fbbf24';
+      ctx.font = 'bold 8px Space Mono,monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('?', 0, 3);
+      ctx.restore();
+
+    } else {
+      // normal / spring — 기존 원형 핀
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      if (p.type === 'spring') {
+        ctx.fillStyle = p.hit ? '#34d399' : '#065f46';
+        ctx.strokeStyle = '#34d399';
+      } else {
+        ctx.fillStyle = p.hit ? '#4b5563' : '#232d3f';
+        ctx.strokeStyle = '#4b5563';
+      }
+      ctx.lineWidth = 1.5;
+      ctx.fill(); ctx.stroke();
+      if (p.type === 'spring') {
+        ctx.fillStyle = '#34d399';
+        ctx.font = 'bold 8px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('↑', p.x, p.y + 3);
+      }
+    }
+    ctx.restore(); // globalAlpha 복원
+  }
+
+  // ball trail
+  const b = state.ball;
+  if (b) {
+    b.trail.forEach((t, i) => {
+      const alpha = (i / b.trail.length) * 0.35;
+      const r2 = b.r * (i / b.trail.length) * 0.8;
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, r2, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(226,232,240,${alpha})`;
+      ctx.fill();
+    });
+
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI*2);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // launch position indicator
+  if (!b) {
+    ctx.beginPath();
+    const ldY = H - 21 - 30;
+    ctx.arc(W/2, ldY, 8, 0, Math.PI*2);
+    ctx.fillStyle = '#1e2533';
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 1.5;
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#34d399';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('●', W/2, ldY + 3);
+
+    // charge gauge bar on canvas (shown while holding)
+    if (state.charging) {
+      const gx = W/2 - 28, gy = H - 21 - 30 + 16;
+      const gw = 56, gh = 7;
+      const pct = state.chargeVal / 100;
+      ctx.fillStyle = '#1e2533';
+      ctx.strokeStyle = '#374151';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(gx, gy, gw, gh, 3); ctx.fill(); ctx.stroke();
+      const r = Math.round(96  + pct * 159);
+      const g2 = Math.round(165 - pct * 165);
+      const bv = Math.round(250 - pct * 79);
+      ctx.fillStyle = `rgb(${r},${g2},${bv})`;
+      ctx.beginPath(); ctx.roundRect(gx, gy, gw * pct, gh, 3); ctx.fill();
+      ctx.fillStyle = '#e2e8f0';
+      ctx.font = 'bold 9px Space Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(Math.round(state.chargeVal) + '%', W/2, gy + gh + 10);
+    }
+  }
+
+  // 슬로우모션 비네팅 — 홀 낙하 중 화면 가장자리 어두워짐
+  if (state.slowmo) {
+    const t = Date.now() / 150;
+    const pulse = 0.55 + Math.sin(t) * 0.08;
+    const grad = ctx.createRadialGradient(W/2, H, H * 0.15, W/2, H, H * 0.85);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, `rgba(0,0,0,${pulse})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+    // SLOW 텍스트
+    ctx.fillStyle = `rgba(226,232,240,${0.25 + Math.sin(t*1.5)*0.1})`;
+    ctx.font = 'bold 11px Space Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('S L O W', W / 2, H * 0.88 - 45);
+  }
+}
+
+// --- GAME LOOP ---
+let loopId;
+let lastTime = 0;
+function loop(ts) {
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+
+  // 깜빡이는 핀 타이머 업데이트
+  const dtMs = dt * 1000;
+  for (const p of state.pins) {
+    if (p.blink) {
+      p.blinkTimer += dtMs;
+      if (p.blinkOn && p.blinkTimer >= p.blinkOnDur) {
+        p.blinkOn = false;
+        p.blinkTimer = 0;
+      } else if (!p.blinkOn && p.blinkTimer >= p.blinkOffDur) {
+        p.blinkOn = true;
+        p.blinkTimer = 0;
+      }
+    }
+    // 움직이는 핀 위치 업데이트
+    if (p.moving) {
+      p.moveX += p.moveDir * p.moveSpeed;
+      if (Math.abs(p.moveX - p.baseX) >= p.moveRange) {
+        p.moveDir *= -1;
+        p.moveX = p.baseX + p.moveRange * (p.moveDir < 0 ? 1 : -1);
+      }
+      p.x = p.moveX;
+    }
+  }
+
+  if ((state.phase === 'fly' || state.phase === 'slowmo_fall') && state.ball) {
+    stepPhysics();
+  }
+
+  if (state.phase === 'aim' && state.charging) {
+    state.chargeVal += state.chargeDir * state.chargeSpeed * dt;
+    if (state.chargeVal >= 100) { state.chargeVal = 100; state.chargeDir = -1; }
+    if (state.chargeVal <= 0)   { state.chargeVal = 0;   state.chargeDir =  1; }
+  }
+
+  // C: 콤보 타이머 바 + 카운터 UI 업데이트
+  const comboUi = document.getElementById('combo-ui');
+  if (comboUi) {
+    if (state.combo > 0 && state.phase === 'fly') {
+      comboUi.style.display = 'block';
+      const elapsed = Date.now() - state.comboTimer;
+      const timerPct = Math.max(0, 1 - elapsed / 1500);
+      const bar = document.getElementById('combo-timer-bar');
+      const lbl = document.getElementById('combo-label');
+      if (bar) {
+        bar.style.width = (timerPct * 100) + '%';
+        // 색상: 일반=파랑, 핫=보라, 피버=빨강
+        bar.style.background = state.fever ? '#f87171' : state.combo >= 10 ? '#fbbf24' : state.combo >= 5 ? '#c084fc' : '#60a5fa';
+      }
+      if (lbl) {
+        const stage = state.fever ? '🔥 FEVER' : state.combo >= 10 ? '🔥 HOT' : state.combo >= 5 ? '⚡ COMBO' : 'COMBO';
+        lbl.textContent = (stage || 'COMBO') + ' ×' + state.combo;
+        lbl.style.color = state.fever ? '#f87171' : state.combo >= 10 ? '#fbbf24' : state.combo >= 5 ? '#c084fc' : '#60a5fa';
+      }
+      // 타이머 만료 시 콤보 초기화 (단, 목표 초과 피버 중엔 유지)
+      if (timerPct <= 0 && state.combo > 0) {
+        const roundMult3 = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
+        const target3 = Math.round((STAGE_TARGETS[state.stage] || 999999) * roundMult3);
+        const { finalScore: fs3 } = calcFinalScore();
+        if (fs3 >= target3) {
+          // 목표 초과 피버 — 콤보 타이머 연장, 피버 유지
+          state.comboTimer = Date.now();
+        } else {
+          state.combo = 0; state.fever = false; state.holeBlocked = false;
+          comboUi.style.display = 'none';
+          updateHUD();
+        }
+      }
+    } else {
+      comboUi.style.display = 'none';
+    }
+  }
+
+  draw();
+  loopId = requestAnimationFrame(loop);
+}
+
+// --- CONTROLS ---
+
+function getCanvasAngle(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = (clientX - rect.left) * scaleX;
+  const my = (clientY - rect.top) * scaleY;
+  const originX = canvas.width / 2;
+  const originY = canvas.height - 21 - 30;
+  return Math.atan2(my - originY, mx - originX);
+}
+
+function clampAngle(a) {
+  return Math.max(-Math.PI + 0.17, Math.min(-0.17, a));
+}
+
+function doLaunch() {
+  if (state.phase !== 'aim') return;
+  state.charging = false;
+  const power = 30 + state.chargeVal * 0.7;
+  // reset bar
+  state.aimAngle = clampAngle(state.aimAngle);
+  spawnBall(power);
+  state.phase = 'fly';
+}
+
+// --- Mouse aim (move = track angle only) ---
+const PIN_TOOLTIP = {
+  normal:       { name: '일반 핀',    color: '#6b7280', desc: '반사 · 타격 시 콤보 Chips 획득' },
+  spring:       { name: '스프링 핀',  color: '#34d399', desc: '강하게 튕김 · 콤보 ×2 점프' },
+  card:         { name: '카드 핀',    color: '#60a5fa', desc: '통과 시 카드 드롭 · 0.8초 후 리스폰' },
+  mystery:      { name: '미스터리 핀',color: '#fbbf24', desc: '통과 시 랜덤 카드 · 인핸스먼트 확률 있음' },
+  bomb:         { name: '폭발 핀',    color: '#f87171', desc: '반사 + 주변 핀 폭발 · +80C ~ +수백C' },
+  magnet_pull:  { name: '인력 핀',    color: '#60a5fa', desc: '공을 끌어당김 · 근처 통과 시 +15C' },
+  magnet_push:  { name: '척력 핀',    color: '#fb923c', desc: '공을 밀어냄 · 근처 통과 시 +15C' },
+  moving:       { name: '이동 핀',    color: '#fbbf24', desc: '좌우로 이동 · 반사형 · 일반 핀 효과' },
+  star:         { name: '스타 핀',    color: '#fbbf24', desc: '오비탈 발동으로 생성 · 타격 시 120+콤보×5C' },
+};
+
+canvas.addEventListener('mousemove', (e) => {
+  // 툴팁: 비행 중에도 표시 (aim 단계가 아닐 때도)
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top) * scaleY;
+
+  const tooltip = document.getElementById('pin-tooltip');
+  let hovered = null;
+  for (const p of state.pins) {
+    if (!p.alive) continue;
+    const dx = mx - p.x, dy = my - p.y;
+    if (Math.sqrt(dx*dx + dy*dy) < p.r + 10) { hovered = p; break; }
+  }
+
+  if (hovered && PIN_TOOLTIP[hovered.type]) {
+    const info = PIN_TOOLTIP[hovered.type];
+    document.getElementById('pin-tooltip-name').textContent = info.name;
+    document.getElementById('pin-tooltip-name').style.color = info.color;
+    document.getElementById('pin-tooltip-desc').textContent = info.desc;
+    // 캔버스 내 좌표 → 화면 좌표
+    const tx = hovered.x / scaleX + rect.left;
+    const ty = hovered.y / scaleY + rect.top;
+    const wrap = document.getElementById('canvas-wrap');
+    const wrapRect = wrap.getBoundingClientRect();
+    let lx = (tx - wrapRect.left) + 14;
+    let ly = (ty - wrapRect.top) - 44;
+    // 오른쪽 넘침 방지
+    if (lx + 160 > wrapRect.width) lx = (tx - wrapRect.left) - 170;
+    if (ly < 0) ly = (ty - wrapRect.top) + 14;
+    tooltip.style.left = lx + 'px';
+    tooltip.style.top  = ly + 'px';
+    tooltip.style.display = 'block';
+  } else {
+    tooltip.style.display = 'none';
+  }
+
+  if (state.phase !== 'aim') return;
+  state.aimAngle = getCanvasAngle(e.clientX, e.clientY);
+  state.mouseOnCanvas = true;
+  if (!state.charging) {
+    const deg = Math.round((state.aimAngle * 180 / Math.PI + 90 + 360) % 360 - 180);
+    const side = deg >= 0 ? '우' : '좌';
+  }
+});
+
+canvas.addEventListener('mouseleave', () => {
+  state.mouseOnCanvas = false;
+  document.getElementById('pin-tooltip').style.display = 'none';
+  if (state.phase === 'aim' && !state.charging) {
+  }
+});
+
+// --- Mousedown = start charge ---
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  if (state.phase !== 'aim') return;
+  state.aimAngle = getCanvasAngle(e.clientX, e.clientY);
+  state.charging = true;
+  state.chargeVal = 0;
+  state.chargeDir = 1;
+});
+
+// --- Mouseup = release → launch ---
+canvas.addEventListener('mouseup', (e) => {
+  if (e.button !== 0) return;
+  if (!state.charging) return;
+  doLaunch();
+});
+
+// Safety: mouseup outside canvas
+window.addEventListener('mouseup', (e) => {
+  if (e.button !== 0) return;
+  if (!state.charging) return;
+  doLaunch();
+});
+
+// --- Touch support ---
+canvas.addEventListener('touchstart', (e) => {
+  if (state.phase !== 'aim') return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  state.aimAngle = getCanvasAngle(touch.clientX, touch.clientY);
+  state.charging = true;
+  state.chargeVal = 0;
+  state.chargeDir = 1;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (state.phase !== 'aim') return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  state.aimAngle = getCanvasAngle(touch.clientX, touch.clientY);
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+  if (!state.charging) return;
+  e.preventDefault();
+  doLaunch();
+}, { passive: false });
+
+document.getElementById('res-retry').addEventListener('click', () => {
+  resetGame();
+  document.getElementById('result-screen').classList.remove('show');
+});
+
+document.getElementById('res-shop').addEventListener('click', () => {
+  // 코인 보상 계산 (라운드 전환 전에)
+  const roundMult = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
+  const target = Math.round((STAGE_TARGETS[state.stage] || 999999) * roundMult);
+  const { finalScore } = calcFinalScore();
+  const isBoss = state.roundIdx === 2;
+  const coinInfo = calcCoinReward(finalScore, target, isBoss);
+
+  // 라운드 → 스테이지 진행
+  state.roundIdx = (state.roundIdx + 1) % 3;
+  if (state.roundIdx === 0) state.stage = Math.min(state.stage + 1, STAGE_TARGETS.length - 1);
+  document.getElementById('result-screen').classList.remove('show');
+  openShop(coinInfo);
+});
+
+function resetGame() {
+  state.chips = 0; state.mult = 1; state.jokerMult = 0;
+  state.comboCount = 0; state.heartHits = 0;
+  state.hand = []; state.ball = null;
+  state.stage = 0; state.roundIdx = 0; state.phase = 'aim';
+  state.aimAngle = -Math.PI / 2;
+  state.charging = false; state.chargeVal = 0; state.chargeDir = 1;
+  state.deck = buildFullDeck();
+  state.jokers = [];
+  state.consumables = [];
+  state.insurance = false;
+  state.magnet = false;
+  state.turn = 1;
+  state.totalChipsBank = 0;
+  state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
+  shopState.coins = 4; shopState.rerollCost = 5;
+  Object.keys(planetBonus).forEach(k => delete planetBonus[k]);
+  pinUpgrades.normal = 0; pinUpgrades.spring = 0; pinUpgrades.card = 0; pinUpgrades.spring_add = 0; pinUpgrades.max_box = 0;
+  Object.keys(runBestScores).forEach(k => delete runBestScores[k]);
+  updateDeckBtn(); renderJokerPanel(); renderConsumablePanel(); updateTurnDots();
+  resize(); renderHand(); updateHUD();
+}
+
+function resetRound() {
+  state.chips = 0; state.jokerMult = 0;
+  state.comboCount = 0; state.heartHits = 0;
+  state.hand = []; state.ball = null; state.phase = 'aim';
+  state.aimAngle = -Math.PI / 2;
+  state.charging = false; state.chargeVal = 0; state.chargeDir = 1;
+  state.deck.forEach(c => c.used = false);
+  state.turn = 1;
+  state.totalChipsBank = 0;
+  state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
+  updateDeckBtn(); renderJokerPanel(); renderConsumablePanel(); updateTurnDots();
+  resize(); renderHand(); updateHUD();
+}
+
+// --- CONSUMABLE PANEL ---
+function renderConsumablePanel() {
+  const panel = document.getElementById('consumable-panel');
+  panel.innerHTML = '';
+
+  // 보험/자력장 상태 뱃지
+  const badges = [];
+  if (state.insurance) badges.push({label:'🛡 보험', desc:'낙하 1회 구출', active: true});
+  if (state.magnet)    badges.push({label:'🧲 자력장', desc:'구멍 근처 자동 방향 보정', active: true});
+
+  // 사용 가능한 소모품 (와일드카드 등 클릭형)
+  state.consumables.forEach((item, i) => {
+    badges.push({label: item.name, desc: item.desc, idx: i, clickable: true});
+  });
+
+  if (!badges.length) {
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = 'flex';
+  badges.forEach(b => {
+    const chip = document.createElement('div');
+    chip.className = 'consumable-chip' + (b.active === false ? ' used' : '');
+    chip.innerHTML = `<span class="cn">${b.label}</span><span class="cd">${b.desc}</span>`;
+    if (b.clickable) {
+      chip.addEventListener('click', () => useConsumable(b.idx));
+    }
+    panel.appendChild(chip);
+  });
+}
+
+function useConsumable(idx) {
+  const item = state.consumables[idx];
+  if (!item) return;
+  if (item.name === '와일드카드 주문서') {
+    if (state.hand.length === 0) return;
+    // 마지막 카드를 와일드로 변환
+    state.hand[state.hand.length - 1].wild = true;
+    state.consumables.splice(idx, 1);
+    renderHand(); updateHUD();
+    spawnFloat(canvas.width/2, canvas.height*0.5, '와일드 변환!', '#fbbf24');
+  }
+  renderConsumablePanel();
+}
+function renderJokerPanel() {
+  const panel = document.getElementById('joker-panel');
+  panel.innerHTML = '';
+  if (state.jokers.length === 0) {
+    panel.innerHTML = '<div style="font-size:10px;color:var(--muted);width:100%;padding:2px 0" id="joker-empty-msg">조커 없음 — 상점에서 구매하세요</div>';
+    return;
+  }
+  state.jokers.forEach(j => {
+    const chip = document.createElement('div');
+    chip.className = 'joker-chip active';
+    // live value display for stackable jokers
+    let valText = j.desc;
+    if (j.effect === 'combo')    valText = '3연속 +4M  누적: +' + state.jokerMult;
+    if (j.effect === 'heart')    valText = '하트 +5M  누적: +' + (state.heartHits * 5);
+    chip.innerHTML = `<span class="jn">${j.name}</span><span class="je">${valText}</span>`;
+    panel.appendChild(chip);
+  });
+}
+
+// --- DECK VIEWER ---
+function updateDeckBtn() {
+  const remaining = state.deck.filter(c => !c.used).length;
+  document.getElementById('deck-btn').textContent = '덱 보기 (' + remaining + ')';
+}
+
+function renderDeckViewer() {
+  // stats
+  const used = state.deck.filter(c => c.used).length;
+  const remaining = 52 - used;
+  const inHand = state.hand.length;
+  const statsEl = document.getElementById('deck-stats');
+  statsEl.innerHTML = `
+    <div class="dstat">전체 <span>52</span></div>
+    <div class="dstat">남은 덱 <span>${remaining}</span></div>
+    <div class="dstat">사용됨 <span>${used}</span></div>
+    <div class="dstat">손패 <span>${inHand}/7</span></div>
+  `;
+
+  // hand cards section
+  const handEl = document.getElementById('deck-hand-cards');
+  handEl.innerHTML = '';
+  if (state.hand.length === 0) {
+    handEl.innerHTML = '<div style="font-size:11px;color:var(--muted)">아직 카드 없음</div>';
+  } else {
+    state.hand.forEach(c => handEl.appendChild(makeDCard(c, 'in-hand')));
+  }
+
+  // full deck by suit
+  for (const suit of SUITS) {
+    const grid = document.getElementById('dg-' + suit);
+    grid.innerHTML = '';
+    const suitCards = state.deck.filter(c => c.suit === suit);
+    // sort by rank value desc
+    suitCards.sort((a,b) => RANK_VAL[b.rank] - RANK_VAL[a.rank]);
+    for (const c of suitCards) {
+      const inHand = state.hand.find(h => h.rank === c.rank && h.suit === c.suit);
+      const cls = inHand ? 'in-hand' : (c.used ? 'used' : '');
+      grid.appendChild(makeDCard(c, cls));
+    }
+  }
+}
+
+function makeDCard(c, extraClass) {
+  const el = document.createElement('div');
+  el.className = 'dcard ' + c.suit + (extraClass ? ' ' + extraClass : '');
+  el.innerHTML = `<span class="dr">${c.rank}</span><span class="ds">${SUIT_SYM[c.suit]}</span>`;
+  if (extraClass === 'in-hand') {
+    const dot = document.createElement('div');
+    dot.className = 'in-dot';
+    el.appendChild(dot);
+  }
+  if (c.enhance) {
+    const eb = document.createElement('div');
+    eb.className = 'deb eb-' + c.enhance;
+    eb.textContent = c.enhance === 'bonus' ? '+C' : c.enhance === 'mult' ? '+M' : '×M';
+    el.appendChild(eb);
+  }
+  return el;
+}
+
+document.getElementById('deck-btn').addEventListener('click', () => {
+  renderDeckViewer();
+  document.getElementById('deck-screen').classList.add('show');
+});
+document.getElementById('deck-close-btn').addEventListener('click', () => {
+  document.getElementById('deck-screen').classList.remove('show');
+});
+
+// ── SHOP ─────────────────────────────────────────────────
+const JOKER_POOL = [
+  { name:'콤보 조커',    desc:'3연속 타격마다 +4 Mult',              price:5,  effect:'combo'    },
+  { name:'슈트 조커 ♥', desc:'하트 카드 타격마다 +5 Mult',           price:5,  effect:'heart'    },
+  { name:'플러시 헌터',  desc:'같은 무늬 3장+ 보유 시 +15C',         price:6,  effect:'flush'    },
+  { name:'폭발 조커',    desc:'폭발 핀 파괴 시 ×2 Mult',             price:7,  effect:'bomb'     },
+  { name:'에이스 킬러',  desc:'에이스 보유 시 Chips ×1.5',            price:8,  effect:'ace'      },
+  { name:'스트레이트 드라이브', desc:'연속 숫자 4장+ 보유 시 ×3 Mult',price:9,  effect:'straight' },
+  { name:'올인 조커',    desc:'첫 MAX POWER 시 Mult ×5',              price:10, effect:'allin'    },
+  { name:'자력 조커 🧲', desc:'모든 핀이 약한 인력 — 공이 핀 주변을 흐름', price:7, effect:'magnet_joker' },
+];
+const PACK_POOL = [
+  { name:'아르카나 팩',  desc:'덱에서 카드 2장 즉시 획득',      price:4, type:'pack' },
+  { name:'스펙트럴 팩',  desc:'인핸스먼트 카드 1장 즉시 획득',  price:5, type:'pack' },
+];
+const PLANET_POOL = [
+  { name:'갤럭시 카드', desc:'모든 족보 레벨 +1 (전 족보 Chips·Mult 상승)', price:6, hand:'all' },
+];
+const CONSUMABLE_POOL = [
+  { name:'와일드카드 주문서', desc:'손패 마지막 카드를 와일드로 변환', price:5, type:'consumable' },
+  { name:'자력장',            desc:'구멍 근처 자동 방향 보정 1회',     price:4, type:'consumable' },
+  { name:'보험',              desc:'구멍 낙하 시 1회 자동 구출',       price:6, type:'consumable' },
+];
+
+let shopState = { coins: 4, rerollCost: 5, items: [], purchased: new Set() };
+// planet level bonuses per hand
+const planetBonus = {};
+
+function randFrom(arr, n) {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
+}
+
+function generateShopItems() {
+  shopState.purchased = new Set();
+  shopState.items = {
+    jokers:  randFrom(JOKER_POOL, 2),
+    packs:   randFrom(PACK_POOL, 2),
+    misc:    [...randFrom(PLANET_POOL, 1), ...randFrom(CONSUMABLE_POOL, 1)],
+  };
+}
+
+function calcCoinReward(finalScore, target, isBoss) {
+  // 방향 B: 라운드별 차등 기본 보상
+  const baseReward = [5, 7, 10][state.roundIdx] || 5;
+  let earned = baseReward;
+
+  // 방향 C: 초과 달성 보너스 +$1~10
+  const excess = finalScore - target;
+  let excessBonus = 0;
+  if (excess > 0) {
+    const ratio = excess / target;
+    excessBonus = Math.min(10, Math.floor(ratio * 6) + 1);
+    earned += excessBonus;
+  }
+
+  // 2. 보스라운드 클리어 추가 보너스
+  if (isBoss) earned += 8;
+
+  // 3. 이자 시스템: 보유 코인 $5당 +$1 (최대 +$5)
+  const interest = Math.min(5, Math.floor(shopState.coins / 5));
+  earned += interest;
+
+  // 4. 골드 카드 포함 시 +$3
+  const hasGold = state.hand.some(c => c.enhance === 'gold');
+  if (hasGold) earned += 3;
+
+  return { earned, interest, isBoss, baseReward, excessBonus, goldBonus: hasGold ? 3 : 0 };
+}
+
+function openShop(coinInfo) {
+  // 코인 지급 및 내역 표시
+  const prev = shopState.coins;
+  shopState.coins += coinInfo.earned;
+  generateShopItems();
+  renderShop();
+
+  // 코인 획득 내역 표시 (버튼 아래 고정 영역)
+  const summary = document.getElementById('coin-summary');
+  if (summary) {
+    const roundNames = ['1라운드', '2라운드', '보스라운드'];
+    const lines = ['💰 코인 정산', '─────────────',
+      roundNames[state.roundIdx] + ' 클리어  +$' + coinInfo.baseReward];
+    if (coinInfo.excessBonus > 0) lines.push('초과 달성      +$' + coinInfo.excessBonus);
+    if (coinInfo.isBoss)          lines.push('보스 클리어    +$8');
+    if (coinInfo.interest > 0)    lines.push('이자           +$' + coinInfo.interest);
+    if (coinInfo.goldBonus > 0)   lines.push('골드 카드      +$3');
+    lines.push('─────────────');
+    lines.push('합계  $' + prev + ' → $' + shopState.coins);
+    summary.textContent = lines.join('\n');
+    summary.style.display = 'block';
+  }
+
+  document.getElementById('shop-screen').classList.add('show');
+}
+
+function showPackResult(packName, msg) {
+  // 상점 안에 작은 결과 토스트 표시
+  let toast = document.getElementById('pack-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'pack-toast';
+    toast.style.cssText = 'position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#064e3b;border:1px solid #34d399;color:#6ee7b7;font-size:11px;font-weight:700;padding:6px 14px;border-radius:6px;z-index:200;font-family:Space Mono,monospace;white-space:nowrap;pointer-events:none';
+    document.getElementById('shop-screen').appendChild(toast);
+  }
+  toast.textContent = packName + ' → ' + msg;
+  toast.style.opacity = '1';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+}
+
+function renderShop() {
+  const roundNames = ['1라운드','2라운드','보스라운드'];
+  const nextRound = roundNames[state.roundIdx] || 'BLIND';
+  const target = STAGE_TARGETS[state.stage] || 999999;
+  document.getElementById('shop-title').textContent = '상점 — 스테이지 ' + (state.stage + 1) + ' / ' + roundNames[state.roundIdx];
+  document.getElementById('shop-coins').textContent = shopState.coins;
+  document.getElementById('reroll-cost').textContent = shopState.rerollCost;
+  const shopRoundMult = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
+  const shopTarget = Math.round((STAGE_TARGETS[state.stage] || 999999) * shopRoundMult);
+  document.getElementById('shop-stage-info').innerHTML =
+    '다음: <strong>' + nextRound + '</strong> &nbsp;|&nbsp; 목표: <strong>' + shopTarget.toLocaleString() + '점</strong>' +
+    ' &nbsp;|&nbsp; 보유 코인: <strong style="color:var(--gold)">$' + shopState.coins + '</strong>';
+
+  renderShopGrid('shop-jokers',  shopState.items.jokers,  'joker');
+  renderShopGrid('shop-packs',   shopState.items.packs,   'pack');
+  renderShopGrid('shop-misc',    shopState.items.misc,    null);
+  renderPinUpgradeGrid();
+}
+
+function renderPinUpgradeGrid() {
+  const grid = document.getElementById('shop-pin-upgrades');
+  grid.innerHTML = '';
+  for (const def of PIN_UPGRADE_DEFS) {
+    const lv = pinUpgrades[def.id];
+    const maxed = lv >= def.maxLv;
+    const price = maxed ? 0 : def.price[lv];
+    const canAfford = !maxed && shopState.coins >= price;
+
+    const div = document.createElement('div');
+    div.className = 'shop-item' + (maxed ? ' sold' : '');
+    if (maxed) {
+      div.style.borderColor = '#1D9E75';
+    }
+
+    // 레벨 도트
+    let dots = '';
+    for (let i = 0; i < def.maxLv; i++) {
+      dots += `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px;background:${i < lv ? '#34d399' : 'var(--bg3)' };border:1px solid ${i < lv ? '#34d399' : 'var(--border)'}"></span>`;
+    }
+
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="font-size:13px">${def.icon}</span>
+        <div class="si-tag" style="background:#1e2a3a;color:#60a5fa;font-size:9px;padding:2px 6px;border-radius:3px">핀 업그레이드</div>
+      </div>
+      <div class="si-name">${def.name}</div>
+      <div class="si-desc">${maxed ? '최대 레벨 달성!' : 'Lv' + (lv+1) + ': ' + def.desc[lv]}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+        <div>${dots}</div>
+        <div class="si-price ${!canAfford && !maxed ? 'cant-afford' : ''}">${maxed ? 'MAX' : '$' + price}</div>
+      </div>
+    `;
+    if (!maxed) {
+      div.addEventListener('click', () => buyPinUpgrade(def.id));
+    }
+    grid.appendChild(div);
+  }
+}
+
+function buyPinUpgrade(id) {
+  const def = PIN_UPGRADE_DEFS.find(d => d.id === id);
+  if (!def) return;
+  const lv = pinUpgrades[id];
+  if (lv >= def.maxLv) return;
+  const price = def.price[lv];
+  if (shopState.coins < price) {
+    spawnFloat(canvas.width / 2, canvas.height / 2, '코인 부족!', '#f87171');
+    return;
+  }
+  shopState.coins -= price;
+  pinUpgrades[id]++;
+  renderShop();
+}
+
+function renderShopGrid(elId, items, defaultTag) {
+  const grid = document.getElementById(elId);
+  grid.innerHTML = '';
+  items.forEach((item, i) => {
+    const key = elId + '_' + i;
+    const sold = shopState.purchased.has(key);
+    const canAfford = shopState.coins >= item.price;
+    const tag = item.hand ? 'planet' : item.effect ? 'joker' : item.type === 'pack' ? 'pack' : 'consumable';
+
+    const div = document.createElement('div');
+    div.className = 'shop-item' + (sold ? ' sold' : '');
+    div.innerHTML = `
+      <div class="si-tag ${tag}">${tag === 'joker' ? '조커' : tag === 'pack' ? '카드 팩' : tag === 'planet' ? '플래닛' : '소모품'}</div>
+      <div class="si-name">${item.name}</div>
+      <div class="si-desc">${item.desc}</div>
+      <div class="si-price ${!canAfford && !sold ? 'cant-afford' : ''}">$${item.price}</div>
+    `;
+    if (!sold) {
+      div.addEventListener('click', () => buyItem(key, item, elId, i));
+    }
+    grid.appendChild(div);
+  });
+}
+
+function buyItem(key, item, elId, i) {
+  if (shopState.purchased.has(key)) return;
+  if (shopState.coins < item.price) {
+    // flash can't afford
+    const grid = document.getElementById(elId);
+    const els = grid.querySelectorAll('.shop-item');
+    if (els[i]) { els[i].style.borderColor = 'var(--red)'; setTimeout(() => { if(els[i]) els[i].style.borderColor = ''; }, 600); }
+    return;
+  }
+  shopState.coins -= item.price;
+  shopState.purchased.add(key);
+
+  // ── JOKER ──────────────────────────────────────────────
+  if (item.effect) {
+    if (state.jokers.length >= 5) {
+      // joker slots full — refund and warn
+      shopState.coins += item.price;
+      shopState.purchased.delete(key);
+      renderShop();
+      return;
+    }
+    state.jokers.push({ name: item.name, effect: item.effect, desc: item.desc });
+    // immediate one-time effects
+    if (item.effect === 'heart') {
+      // will trigger on next heart hit — no immediate bonus
+    }
+    renderJokerPanel();
+  }
+
+  // ── PLANET ─────────────────────────────────────────────
+  if (item.hand) {
+    const bonusMap = {
+      '하이카드':{chips:10,mult:1},'원페어':{chips:15,mult:1},'투페어':{chips:20,mult:2},
+      '트리플':{chips:20,mult:2},'스트레이트':{chips:30,mult:3},'플러시':{chips:15,mult:2},
+      '풀하우스':{chips:25,mult:2},'포카드':{chips:30,mult:3},
+    };
+    const hands = item.hand === 'all' ? Object.keys(bonusMap) : [item.hand];
+    hands.forEach(h => {
+      if (!planetBonus[h]) planetBonus[h] = {chips:0, mult:0};
+      const b = bonusMap[h] || {chips:10,mult:1};
+      planetBonus[h].chips += b.chips;
+      planetBonus[h].mult  += b.mult;
+    });
+  }
+
+  // ── CARD PACK ──────────────────────────────────────────
+  if (item.type === 'pack') {
+    if (item.name === '아르카나 팩') {
+      const drawn = [drawFromDeck(), drawFromDeck()];
+      drawn.forEach(card => {
+        if (state.hand.length < 5) state.hand.push(card);
+        else state.hand = trimTobestHand(card);
+      });
+      renderHand(); updateHUD();
+      showPackResult('아르카나 팩', drawn.map(c => c.rank + SUIT_SYM[c.suit]).join(', ') + ' 획득!');
+    }
+    if (item.name === '스펙트럴 팩') {
+      const card = drawFromDeck();
+      card.enhance = ['bonus','mult','glass'][Math.floor(Math.random() * 3)];
+      if (state.hand.length < 5) state.hand.push(card);
+      else state.hand = trimTobestHand(card);
+      renderHand(); updateHUD();
+      const enhName = card.enhance === 'bonus' ? '+Chips' : card.enhance === 'mult' ? '+Mult' : '×Mult(글래스)';
+      showPackResult('스펙트럴 팩', card.rank + SUIT_SYM[card.suit] + ' [' + enhName + '] 획득!');
+    }
+  }
+
+  // ── CONSUMABLE ─────────────────────────────────────────
+  if (item.type === 'consumable') {
+    if (item.name === '와일드카드 주문서') {
+      state.consumables.push({ name: '와일드카드 주문서', desc: '클릭 → 손패 마지막 카드 와일드 변환' });
+      renderConsumablePanel();
+    }
+    if (item.name === '자력장') {
+      state.magnet = true;
+      renderConsumablePanel();
+    }
+    if (item.name === '보험') {
+      state.insurance = true;
+      renderConsumablePanel();
+    }
+  }
+
+  renderShop();
+}
+
+document.getElementById('shop-pass').addEventListener('click', () => {
+  shopState.coins += 3;
+  document.getElementById('shop-coins').textContent = shopState.coins;
+  closeShopAndPlay();
+});
+
+document.getElementById('shop-next').addEventListener('click', () => {
+  closeShopAndPlay();
+});
+
+document.getElementById('shop-reroll').addEventListener('click', () => {
+  if (shopState.coins < shopState.rerollCost) {
+    spawnFloat(canvas.width/2, canvas.height/2, '코인 부족!', '#f87171');
+    return;
+  }
+  shopState.coins -= shopState.rerollCost;
+  shopState.rerollCost++;
+  generateShopItems();
+  renderShop();
+});
+
+function closeShopAndPlay() {
+  document.getElementById('shop-screen').classList.remove('show');
+  const summary = document.getElementById('coin-summary');
+  if (summary) summary.style.display = 'none';
+  resetRound();
+}
+
+// ── INIT ──────────────────────────────────────────────────
+window.addEventListener('resize', resize);
+resize();
+renderHand();
+updateHUD();
+lastTime = performance.now();
+loopId = requestAnimationFrame(loop);
+</script>
+</body>
+</html>
