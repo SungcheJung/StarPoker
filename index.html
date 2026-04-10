@@ -1109,14 +1109,14 @@ function initPins() {
 
 // 보스 정의 테이블
 const BOSS_DATA = [
-  { name:'\uAC00\ub514\uc5b8',        icon:'\ud83d\udc7e', color:'#f87171', hp:7,  skills:[] },
-  { name:'\ub2e4\ud06c \ubb34\ubc84',  icon:'\ud83d\udc7f', color:'#c084fc', hp:8,  skills:['move'] },
-  { name:'\uc30d\ub4dc \uac00\ub4dc',  icon:'\ud83d\udee1', color:'#60a5fa', hp:8,  skills:['shield','moveSmall'] },
-  { name:'\ud154\ub808\ud3ec\ud130',   icon:'\ud83c\udf00', color:'#34d399', hp:9,  skills:['teleport'] },
-  { name:'\ucf64\ubcf4 \ube0c\ub808\uc774\ucee4', icon:'\u26a1', color:'#fbbf24', hp:9,  skills:['combobreak','moveSmall'], counter:true },
-  { name:'\ub9ac\ud38c\uc11c',         icon:'\ud83d\udd2e', color:'#fb923c', hp:10, skills:['repulse','moveSmall'],    counter:true },
-  { name:'\ud540 \ud30c\uad34\uc790',  icon:'\ud83d\udc80', color:'#f87171', hp:10, skills:['combobreak','pinbreak','moveSmall'], counter:true },
-  { name:'\uce74\uc624\uc2a4 \ucf54\uc5b4', icon:'\ud83c\udf11', color:'#e879f9', hp:15, skills:['chaos'], counter:true },
+  { name:'\uAC00\ub514\uc5b8',        icon:'👾', color:'#f87171', hp:7,  skills:[] },
+  { name:'\ub2e4\ud06c \ubb34\ubc84',  icon:'👿', color:'#c084fc', hp:8,  skills:['move'] },
+  { name:'\uc30d\ub4dc \uac00\ub4dc',  icon:'🛡', color:'#60a5fa', hp:8,  skills:['shield','moveSmall'] },
+  { name:'\ud154\ub808\ud3ec\ud130',   icon:'🌀', color:'#34d399', hp:9,  skills:['teleport'] },
+  { name:'\ucf64\ubcf4 \ube0c\ub808\uc774\ucee4', icon:'⚡', color:'#fbbf24', hp:9,  skills:['combobreak','moveSmall'], counter:true },
+  { name:'\ub9ac\ud38c\uc11c',         icon:'🔮', color:'#fb923c', hp:10, skills:['repulse','moveSmall'],    counter:true },
+  { name:'\ud540 \ud30c\uad34\uc790',  icon:'💀', color:'#f87171', hp:10, skills:['combobreak','pinbreak','moveSmall'], counter:true },
+  { name:'\uce74\uc624\uc2a4 \ucf54\uc5b4', icon:'🌑', color:'#e879f9', hp:15, skills:['chaos'], counter:true },
 ];
 
 function initBoss() {
@@ -1217,26 +1217,43 @@ function stepBossSkills(boss, b, W, H) {
     if (rdist < rRange && rdist > 0.1) {
       const rnx = rdx/rdist, rny = rdy/rdist;
       const sp = Math.sqrt(b.vx*b.vx+b.vy*b.vy);
-      if (sp < 10) { const str=(1-rdist/rRange)*0.6; b.vx+=rnx*str; b.vy+=rny*str; }
+      if (sp >= 15) {
+        // 속도 15 이상 → 필드 돌파, 인력 미적용
+      } else {
+        // 속도 15 미만 → 척력 적용 + 반격 효과 (수직 낙하)
+        const str = (1-rdist/rRange)*0.6;
+        b.vx += rnx*str; b.vy += rny*str;
+        // 필드 중심 근접 시 반격 효과 발동
+        if (rdist < rRange * 0.5 && !b._repulseLock) {
+          b._repulseLock = 20;
+          b.vx = 0; b.vy = 5;
+          b._counterLock = 18;
+          spawnFloat(boss.x, boss.y+20, '\ud83d\udd2e \ucca8\ub825!', '#fb923c');
+        }
+      }
+      if (b._repulseLock > 0) b._repulseLock--;
+    } else {
+      if (b._repulseLock > 0) b._repulseLock--;
     }
   }
 
   if (sk.includes('pinbreak') || ca === 'pinbreak') {
     boss.skillTimer -= dt;
     if (boss.skillTimer <= 0) {
-      boss.skillTimer = 8000;
-      // 척력 핀 최대 3개 제한
-      const currentPush = state.pins.filter(p => p.alive && p.type === 'magnet_push').length;
-      const canAdd = Math.max(0, 3 - currentPush);
-      if (canAdd > 0) {
-        const pts = state.pins.filter(p=>p.alive&&(p.type==='normal'||p.type==='spring'));
-        pts.sort(()=>Math.random()-0.5).slice(0, Math.min(2, canAdd)).forEach(p=>{ p.type='magnet_push'; });
-        if (pts.length > 0) {
-          boss.skillLabel = '\ud83d\udc80 \ud540 \ud30c\uad34!'; boss.skillLabelTimer = 1000;
-          spawnFloat(boss.x, boss.y+20, '\ud83d\udc80 \ud540 \ud30c\uad34!', '#f87171');
-          showNotif('\ud83d\udc80 \ud540 \ud30c\uad34! \ucca8\ub825 \ud540 \uc0dd\uc131', '#f87171');
-        }
+      boss.skillTimer = 3000; // 3초마다
+      // 특수 핀(인력·척력·폭발·이동·깜빡) 중 랜덤 1개 제거
+      const specials = state.pins.filter(p => p.alive && (
+        p.type === 'magnet_pull' || p.type === 'magnet_push' ||
+        p.type === 'bomb' || p.moving || p.blink
+      ));
+      if (specials.length > 0) {
+        const target = specials[Math.floor(Math.random() * specials.length)];
+        target.alive = false;
+        boss.skillLabel = '\ud83d\udc80 \ud540 \ud30c\uad34!'; boss.skillLabelTimer = 1000;
+        spawnFloat(target.x, target.y, '\ud83d\udc80', '#f87171');
+        showNotif('\ud83d\udc80 \ud2b9\uc218 \ud540 \uc81c\uac70!', '#f87171');
       }
+      // 특수 핀이 없으면 아무것도 안 함
     }
   }
 
@@ -1391,9 +1408,10 @@ function drawBoss() {
   ctx2.lineWidth=isFlash?3:2; ctx2.fill(); ctx2.stroke();
 
   ctx2.globalAlpha=1.0;
+  ctx2.fillStyle = isFlash ? '#fbbf24' : '#ffffff';
   ctx2.font='bold '+Math.round(boss.r*0.72)+'px Arial';
   ctx2.textAlign='center'; ctx2.textBaseline='middle';
-  ctx2.fillText(boss.icon,boss.x,boss.y);
+  ctx2.fillText(boss.icon, boss.x, boss.y + boss.r * 0.12);
 
   const barW=boss.r*2.8, barH=8;
   const barX=boss.x-barW/2, barY=boss.y+boss.r+10;
@@ -1472,6 +1490,7 @@ function spawnBall(power) {
     graceFrames: 20,
     orbits: new Map(),
     _counterLock: 0,
+    _repulseLock: 0,
   };
 }
 
@@ -2638,14 +2657,14 @@ function updateHUD() {
   document.getElementById('stage-pct').textContent = finalScore.toLocaleString() + ' / ' + target.toLocaleString();
 
   // 목표 초과 시 피버 강제 진입 + HUD 금색
-  const isBossRoundFever = state.roundIdx === 2 && state.boss;
+  const bossAliveNow = state.roundIdx === 2 && state.boss && !state.boss.defeated;
   if (state.phase === 'fly' && finalScore >= target) {
     if (scoreVal) scoreVal.style.color = '#fbbf24';
-    if (!state.fever && !isBossRoundFever) {
-      // 일반 라운드: 목표 달성 시 피버
+    if (!state.fever && !bossAliveNow) {
+      // 일반 라운드 또는 보스 처치 후: 목표 달성 시 피버
       enterFeverMode('🎯 목표 달성!  Chips × 1.5');
     }
-    // 보스 라운드는 점수 달성만으로 피버 진입 안 함 — 보스 처치 시 진입
+    // 보스가 살아있으면 점수 달성만으로 피버 진입 안 함
   }
 }
 
@@ -2704,7 +2723,7 @@ function triggerResult() {
   const roundMult2 = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
   const target = Math.round((STAGE_TARGETS[state.stage] || 999999) * roundMult2);
 
-  const TEST_MODE = true; // 테스트 모드: 3턴 종료 시 무조건 클리어
+  const TEST_MODE = false;
   const isBossRound = state.roundIdx === 2 && state.boss;
 
   // 테스트 모드: 점수/보스 무관하게 목표 점수 달성 또는 3턴 소진 시 클리어
@@ -3072,9 +3091,6 @@ function draw() {
     ctx.fillText((Math.abs(deg)) + '° ' + sign, labelX, labelY);
   }
 
-  // boss
-  drawBoss();
-
   // pins
   for (const p of state.pins) {
     if (!p.alive) continue;
@@ -3271,6 +3287,9 @@ function draw() {
     }
     ctx.restore(); // globalAlpha 복원
   }
+
+  // boss (핀보다 위 레이어)
+  drawBoss();
 
   // ball trail
   const b = state.ball;
