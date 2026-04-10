@@ -2,7 +2,10 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>스타핀볼포커</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&display=swap');
@@ -40,6 +43,13 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
+  /* 모바일 텍스트 크기 자동 조정 방지 */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
+
   body {
     background: var(--bg);
     color: var(--text);
@@ -48,16 +58,29 @@
     flex-direction: column;
     align-items: center;
     min-height: 100vh;
+    min-height: 100dvh; /* 모바일 주소창 제외 높이 */
     overflow-x: hidden;
+    /* iOS 노치/홈 인디케이터 영역 처리 */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    /* 터치 하이라이트 제거 */
+    -webkit-tap-highlight-color: transparent;
+    /* 텍스트 선택 방지 (게임 중 드래그) */
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   #app {
     width: 100%;
     max-width: 480px;
     min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
     position: relative;
+    overflow: hidden;
   }
 
   /* HUD */
@@ -83,6 +106,8 @@
     position: relative;
     flex-shrink: 0;
     background: var(--bg);
+    touch-action: none;
+    overflow: hidden;
   }
   #gameCanvas { display: block; width: 100%; }
 
@@ -185,7 +210,44 @@
   .joker-chip .je { font-size: 9px; display: block; opacity: 0.8; }
 
   /* LAUNCH UI */
-  #gameCanvas { display: block; width: 100%; cursor: crosshair; }
+  #gameCanvas { display: block; width: 100%; cursor: crosshair; touch-action: none; }
+
+  /* 모바일 터치 최적화 */
+  @media (max-width: 480px) and (pointer: coarse) {
+    /* 버튼 터치 영역 확대 */
+    #deck-btn {
+      min-height: 36px;
+      padding: 6px 12px !important;
+      font-size: 11px !important;
+    }
+    .res-btn {
+      min-height: 44px;
+      font-size: 14px !important;
+    }
+    .shop-close-btn, .deck-close {
+      min-height: 36px;
+      min-width: 44px;
+    }
+    /* 카드 크기 약간 확대 */
+    .pcard {
+      min-width: 38px !important;
+      min-height: 52px !important;
+    }
+    /* 조커 칩 터치 영역 */
+    .joker-chip {
+      min-height: 38px;
+      padding: 6px 10px !important;
+    }
+    /* HUD 폰트 약간 키움 */
+    .hud-val { font-size: 14px !important; }
+    .hud-label { font-size: 8px !important; }
+    /* 상점 아이템 터치 영역 */
+    .shop-item {
+      min-height: 52px;
+    }
+    /* 손패 메타 */
+    .hand-meta-label { font-size: 12px !important; }
+  }
 
   /* RESULT SCREEN */
   #result-screen {
@@ -465,13 +527,6 @@
   <div id="canvas-wrap">
     <canvas id="gameCanvas"></canvas>
     <div id="card-notif">카드 획득!</div>
-    <!-- 콤보 카운터 + 타이머 바 -->
-    <div id="combo-ui" style="display:none;position:absolute;top:8px;left:50%;transform:translateX(-50%);min-width:120px;text-align:center;pointer-events:none;z-index:55">
-      <div id="combo-label" style="font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:#60a5fa;line-height:1;margin-bottom:4px">COMBO x1</div>
-      <div style="width:120px;height:4px;background:#1e2533;border-radius:2px;overflow:hidden;margin:0 auto">
-        <div id="combo-timer-bar" style="height:100%;width:100%;border-radius:2px;background:#60a5fa;transition:background 0.2s"></div>
-      </div>
-    </div>
     <!-- 피버 인트로 오버레이 -->
     <div id="fever-intro" style="display:none;position:absolute;inset:0;background:rgba(10,13,20,0.82);z-index:80;pointer-events:none;flex-direction:column;align-items:center;justify-content:center">
       <!-- 1단계: 클리어 -->
@@ -496,8 +551,19 @@
   <!-- HAND -->
   <div id="hand-panel">
     <div class="hand-meta">
-      <div class="hand-meta-label">손패 <span id="hand-count" style="color:var(--text)">0</span> / 7</div>
-      <div style="display:flex;align-items:center;gap:8px">
+      <!-- 손패 카운트 -->
+      <div class="hand-meta-label" style="flex-shrink:0">손패 <span id="hand-count" style="color:var(--text)">0</span> / 7</div>
+      <!-- 카드획득/알림 (가운데 왼쪽) -->
+      <div id="hand-notif" style="flex:1;font-size:11px;font-weight:700;font-family:'Space Mono',monospace;color:#60a5fa;opacity:0;transition:opacity 0.2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;padding:0 4px"></div>
+      <!-- 콤보 -->
+      <div id="combo-bar-wrap" style="display:none;align-items:center;gap:4px;flex-shrink:0">
+        <span id="combo-label" style="font-size:11px;font-weight:700;font-family:'Space Mono',monospace;color:#60a5fa;white-space:nowrap"></span>
+        <div style="width:48px;height:4px;background:#1e2533;border-radius:2px;overflow:hidden;flex-shrink:0">
+          <div id="combo-timer-bar" style="height:100%;width:100%;border-radius:2px;background:#60a5fa;transition:background 0.2s"></div>
+        </div>
+      </div>
+      <!-- 덱보기 -->
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
         <button id="deck-btn">덱 보기 (52)</button>
       </div>
     </div>
@@ -619,6 +685,87 @@
 </div>
 
 <script>
+// ── SOUND SYSTEM ──────────────────────────────────────────
+const _ac = new (window.AudioContext || window.webkitAudioContext)();
+let _soundEnabled = true;
+
+function _resumeAc() { if (_ac.state === 'suspended') _ac.resume(); }
+document.addEventListener('touchstart', _resumeAc, { once: true });
+document.addEventListener('mousedown',  _resumeAc, { once: true });
+
+function _playTone(freq, type, vol, dur, freqEnd, delay=0) {
+  if (!_soundEnabled) return;
+  try {
+    const o = _ac.createOscillator();
+    const g = _ac.createGain();
+    o.connect(g); g.connect(_ac.destination);
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, _ac.currentTime + delay);
+    if (freqEnd) o.frequency.linearRampToValueAtTime(freqEnd, _ac.currentTime + delay + dur);
+    g.gain.setValueAtTime(vol, _ac.currentTime + delay);
+    g.gain.exponentialRampToValueAtTime(0.001, _ac.currentTime + delay + dur);
+    o.start(_ac.currentTime + delay);
+    o.stop(_ac.currentTime + delay + dur);
+  } catch(e) {}
+}
+
+function _playNoise(vol, dur, delay=0) {
+  if (!_soundEnabled) return;
+  try {
+    const buf = _ac.createBuffer(1, _ac.sampleRate * dur, _ac.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random()*2-1;
+    const src = _ac.createBufferSource();
+    const g = _ac.createGain();
+    const f = _ac.createBiquadFilter();
+    src.buffer = buf;
+    f.type = 'bandpass'; f.frequency.value = 800;
+    src.connect(f); f.connect(g); g.connect(_ac.destination);
+    g.gain.setValueAtTime(vol, _ac.currentTime + delay);
+    g.gain.exponentialRampToValueAtTime(0.001, _ac.currentTime + delay + dur);
+    src.start(_ac.currentTime + delay);
+  } catch(e) {}
+}
+
+const SFX = {
+  // 공 발사
+  launch()   { _playTone(200, 'sine', 0.2, 0.12, 400); },
+  // 일반 핀 타격
+  pinHit()   { _playTone(300, 'square', 0.12, 0.06, 200); },
+  // 스프링 핀 타격
+  spring()   { _playTone(500, 'sine', 0.2, 0.15, 900); },
+  // 카드 획득
+  card()     { _playTone(600, 'sine', 0.15, 0.08);
+               _playTone(800, 'sine', 0.15, 0.08, 0, 0.08); },
+  // 콤보 증가 (콤보 수에 따라 음정 변화)
+  combo(n)   { const f = 300 + n * 15; _playTone(f, 'sine', 0.18, 0.1, f*1.3); },
+  // MAX 박스
+  max()      { _playTone(150, 'sawtooth', 0.25, 0.05);
+               _playTone(300, 'sawtooth', 0.25, 0.1, 500, 0.05); },
+  // 폭발 핀
+  bomb()     { _playNoise(0.3, 0.25); _playTone(80, 'sine', 0.3, 0.3, 40); },
+  // 홀 낙하
+  hole()     { _playTone(400, 'sine', 0.2, 0.4, 100); },
+  // 피버 진입
+  fever()    { [0,0.08,0.16,0.24,0.32].forEach((d,i) => {
+                 _playTone(400+i*80, 'square', 0.15, 0.12, 0, d); }); },
+  // 보스 타격
+  bossHit()  { _playTone(120, 'sawtooth', 0.3, 0.12, 80);
+               _playNoise(0.15, 0.1, 0.05); },
+  // 보스 처치
+  bossDown() { [0,0.1,0.2,0.3].forEach((d,i) => {
+                 _playTone(300+i*100, 'square', 0.2, 0.15, 0, d); });
+               _playNoise(0.2, 0.4, 0.35);
+               _playTone(800, 'sine', 0.3, 0.5, 1200, 0.5); },
+  // 방어막 반사
+  shield()   { _playTone(600, 'triangle', 0.15, 0.1, 400); },
+  // 턴 전환
+  turn()     { _playTone(250, 'sine', 0.15, 0.2, 200); },
+  // 클리어
+  clear()    { [0,0.1,0.2,0.35].forEach((d,i) => {
+                 _playTone([400,500,600,800][i], 'sine', 0.2, 0.2, 0, d); }); },
+};
+// ──────────────────────────────────────────────────────────
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const wrap = document.getElementById('canvas-wrap');
@@ -761,6 +908,7 @@ let state = {
   chargeDir: 1,
   chargeSpeed: 120,
   slowmo: false,    // 홀 진입 슬로우모션
+  boss: null,       // 보스 객체 { hp, maxHp, x, y, r, hit, flashTimer, defeated }
 };
 
 // --- PINS ---
@@ -931,10 +1079,12 @@ function initPins() {
     });
   }
 
-  // ST7~ 척력 핀 3개 강제 추가
+  // ST7~ 척력 핀 최대 3개 강제 추가 (이미 배치된 척력 핀 수 고려)
   if (state.stage >= 6) {
+    const existingPush = state.pins.filter(p => p.type === 'magnet_push').length;
+    const addCount = Math.max(0, 3 - existingPush);
     const freeSlots = shuffled.filter(s => !usedKeys.has(slotKey(s)));
-    freeSlots.sort(() => Math.random()-0.5).slice(0, 3).forEach(s => {
+    freeSlots.sort(() => Math.random()-0.5).slice(0, addCount).forEach(s => {
       state.pins.push(mkPin(s.x, s.y, 'magnet_push', null));
       usedKeys.add(slotKey(s));
     });
@@ -954,6 +1104,323 @@ function initPins() {
     });
   }
 }
+
+// --- BOSS SYSTEM ---
+
+// 보스 정의 테이블
+const BOSS_DATA = [
+  { name:'\uAC00\ub514\uc5b8',        icon:'\ud83d\udc7e', color:'#f87171', hp:7,  skills:[] },
+  { name:'\ub2e4\ud06c \ubb34\ubc84',  icon:'\ud83d\udc7f', color:'#c084fc', hp:8,  skills:['move'] },
+  { name:'\uc30d\ub4dc \uac00\ub4dc',  icon:'\ud83d\udee1', color:'#60a5fa', hp:8,  skills:['shield','moveSmall'] },
+  { name:'\ud154\ub808\ud3ec\ud130',   icon:'\ud83c\udf00', color:'#34d399', hp:9,  skills:['teleport'] },
+  { name:'\ucf64\ubcf4 \ube0c\ub808\uc774\ucee4', icon:'\u26a1', color:'#fbbf24', hp:9,  skills:['combobreak','moveSmall'], counter:true },
+  { name:'\ub9ac\ud38c\uc11c',         icon:'\ud83d\udd2e', color:'#fb923c', hp:10, skills:['repulse','moveSmall'],    counter:true },
+  { name:'\ud540 \ud30c\uad34\uc790',  icon:'\ud83d\udc80', color:'#f87171', hp:10, skills:['combobreak','pinbreak','moveSmall'], counter:true },
+  { name:'\uce74\uc624\uc2a4 \ucf54\uc5b4', icon:'\ud83c\udf11', color:'#e879f9', hp:15, skills:['chaos'], counter:true },
+];
+
+function initBoss() {
+  if (state.roundIdx !== 2) { state.boss = null; return; }
+  const W = canvas.width;
+  const bossR = W * 0.07;
+  const st = state.stage;
+  const data = BOSS_DATA[st] || BOSS_DATA[0];
+  const roundMult = 2.5;
+  const target = Math.round((STAGE_TARGETS[st] || 999999) * roundMult);
+  state.boss = {
+    x: W/2, y: bossR + 8, r: bossR,
+    hp: data.hp, maxHp: data.hp,
+    hpTarget: Math.round(target * 0.30),
+    name: data.name, icon: data.icon, color: data.color,
+    skills: data.skills, counter: !!data.counter,
+    hit: false, flashTimer: 0, defeated: false,
+    moveDir:1, moveSpeed:1.2,
+    shieldActive:false, shieldTimer:0, shieldCooldown:5000,
+    teleportCooldown:5000, teleportWarn:false, teleportWarnTimer:0,
+    skillTimer:8000, skillLabel:'', skillLabelTimer:0,
+    chaosSkills:['move','shield','teleport','combobreak','repulse','pinbreak'],
+    chaosActive:'', chaosCooldown:10000,
+  };
+}
+
+function bossCounterAttack(boss, b) {
+  if (!boss.counter) return;
+  if (Math.random() > 0.25) return;
+  // 반격: vx=0, vy=중간속도로 수직 낙하 + 0.3초간 잠금
+  b.vx = 0;
+  b.vy = 5; // 느린 속도로 시작
+  b._counterLock = 18; // 0.3초 (60fps 기준 18프레임)
+  boss.skillLabel = '\u26a1 \ubc18\uaca9!';
+  boss.skillLabelTimer = 1200;
+  showNotif('\u26a1 \ubc18\uaca9!', '#f87171');
+  spawnFloat(boss.x, boss.y + 20, '\u26a1 \ubc18\uaca9!', '#f87171');
+}
+
+function stepBossSkills(boss, b, W, H) {
+  const dt = 16;
+  const sk = boss.skills;
+  const ca = boss.chaosActive;
+
+  if (sk.includes('move') || ca === 'move') {
+    boss.x += boss.moveDir * boss.moveSpeed;
+    const lim = W * 0.35;
+    if (Math.abs(boss.x - W/2) > lim) {
+      boss.moveDir *= -1;
+      boss.x = W/2 + lim * Math.sign(boss.x - W/2);
+    }
+    if (!sk.includes('move') && boss.hp <= boss.maxHp * 0.5) boss.moveSpeed = 1.8;
+  }
+
+  // moveSmall: 다크무버보다 25% 좁은 범위 이동
+  if (sk.includes('moveSmall') || ca === 'moveSmall') {
+    boss.x += boss.moveDir * boss.moveSpeed;
+    const lim = W * 0.35 * 0.75; // 25% 좁음
+    if (Math.abs(boss.x - W/2) > lim) {
+      boss.moveDir *= -1;
+      boss.x = W/2 + lim * Math.sign(boss.x - W/2);
+    }
+  }
+
+  if (sk.includes('shield') || ca === 'shield') {
+    boss.shieldCooldown -= dt;
+    if (boss.shieldActive) {
+      boss.shieldTimer -= dt;
+      if (boss.shieldTimer <= 0) { boss.shieldActive = false; boss.shieldCooldown = 5000; boss.skillLabel = ''; }
+    } else if (boss.shieldCooldown <= 0) {
+      boss.shieldActive = true; boss.shieldTimer = 2000;
+      boss.skillLabel = '\ud83d\udee1 \ubc29\uc5b4\ub9c9!'; boss.skillLabelTimer = 800;
+      spawnFloat(boss.x, boss.y - 20, '\ud83d\udee1 \ubc29\uc5b4\ub9c9!', '#60a5fa');
+    }
+  }
+
+  if (sk.includes('teleport') || ca === 'teleport') {
+    boss.teleportCooldown -= dt;
+    if (boss.teleportWarn) {
+      boss.teleportWarnTimer -= dt;
+      if (boss.teleportWarnTimer <= 0) {
+        boss.teleportWarn = false;
+        boss.x = W*0.15 + Math.random()*W*0.7;
+        boss.skillLabel = '\ud83c\udf00 \uc21c\uac04\uc774\ub3d9!'; boss.skillLabelTimer = 800;
+        spawnFloat(boss.x, boss.y, '\ud83c\udf00', '#34d399');
+        boss.teleportCooldown = 5000;
+      }
+    } else if (boss.teleportCooldown <= 0) {
+      boss.teleportWarn = true; boss.teleportWarnTimer = 500;
+      spawnFloat(boss.x, boss.y, '\u26a0\ufe0f', '#fbbf24');
+    }
+  }
+
+  if ((sk.includes('repulse') || ca === 'repulse') && b) {
+    const rdx = b.x-boss.x, rdy = b.y-boss.y;
+    const rdist = Math.sqrt(rdx*rdx+rdy*rdy);
+    const rRange = boss.r * 5;
+    if (rdist < rRange && rdist > 0.1) {
+      const rnx = rdx/rdist, rny = rdy/rdist;
+      const sp = Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+      if (sp < 10) { const str=(1-rdist/rRange)*0.6; b.vx+=rnx*str; b.vy+=rny*str; }
+    }
+  }
+
+  if (sk.includes('pinbreak') || ca === 'pinbreak') {
+    boss.skillTimer -= dt;
+    if (boss.skillTimer <= 0) {
+      boss.skillTimer = 8000;
+      // 척력 핀 최대 3개 제한
+      const currentPush = state.pins.filter(p => p.alive && p.type === 'magnet_push').length;
+      const canAdd = Math.max(0, 3 - currentPush);
+      if (canAdd > 0) {
+        const pts = state.pins.filter(p=>p.alive&&(p.type==='normal'||p.type==='spring'));
+        pts.sort(()=>Math.random()-0.5).slice(0, Math.min(2, canAdd)).forEach(p=>{ p.type='magnet_push'; });
+        if (pts.length > 0) {
+          boss.skillLabel = '\ud83d\udc80 \ud540 \ud30c\uad34!'; boss.skillLabelTimer = 1000;
+          spawnFloat(boss.x, boss.y+20, '\ud83d\udc80 \ud540 \ud30c\uad34!', '#f87171');
+          showNotif('\ud83d\udc80 \ud540 \ud30c\uad34! \ucca8\ub825 \ud540 \uc0dd\uc131', '#f87171');
+        }
+      }
+    }
+  }
+
+  if (sk.includes('chaos')) {
+    boss.chaosCooldown -= dt;
+    if (boss.chaosCooldown <= 0) {
+      boss.chaosCooldown = 10000;
+      boss.chaosActive = boss.chaosSkills[Math.floor(Math.random()*boss.chaosSkills.length)];
+      boss.shieldActive=false; boss.shieldCooldown=0; boss.teleportCooldown=0;
+      boss.teleportWarn=false; boss.skillTimer=0;
+      const lbl = {move:'\uc774\ub3d9',shield:'\ubc29\uc5b4\ub9c9',teleport:'\uc21c\uac04\uc774\ub3d9',
+        combobreak:'\ucf54\uc0a4 \ube0c\ub808\uc774\ucee4',repulse:'\ucca8\ub825 \ud544\ub4dc',pinbreak:'\ud540 \ud30c\uad34'}[boss.chaosActive] || '';
+      boss.skillLabel = '\ud83c\udf11 '+lbl+'!'; boss.skillLabelTimer = 1500;
+      spawnFloat(boss.x, boss.y-24, boss.skillLabel, '#e879f9');
+      showNotif('\ud83c\udf11 \uce74\uc624\uc2a4: '+lbl+'!', '#e879f9');
+    }
+  }
+
+  if (boss.skillLabelTimer > 0) boss.skillLabelTimer -= dt;
+}
+
+function stepBoss() {
+  const boss = state.boss;
+  if (!boss || boss.defeated) return;
+  const b = state.ball;
+  const W = canvas.width, H = canvas.height;
+  if (boss.flashTimer > 0) boss.flashTimer -= 16;
+  stepBossSkills(boss, b, W, H);
+  if (!b) return;
+
+  if (boss.shieldActive) {
+    const dx=b.x-boss.x, dy=b.y-boss.y;
+    const dist=Math.sqrt(dx*dx+dy*dy), minD=b.r+boss.r*1.1;
+    if (dist < minD && dist > 0.1) {
+      const nx=dx/dist, ny=dy/dist;
+      b.x+=nx*(minD-dist); b.y+=ny*(minD-dist);
+      const dot=b.vx*nx+b.vy*ny;
+      b.vx-=2*dot*nx; b.vy-=2*dot*ny;
+      // 방어막 반사 후 최소 속도 보장 (인력 핀 고착 방지)
+      const spd = Math.sqrt(b.vx*b.vx+b.vy*b.vy);
+      if (spd < 5) {
+        const scale = 5 / spd;
+        b.vx *= scale; b.vy *= scale;
+      }
+      // 아래 방향 성분 보장 (위쪽으로 느리게 떠있는 상황 방지)
+      if (b.vy < 2) b.vy = 2;
+      // 모든 인력핀 _orbitAcc 초기화 (방어막 반사 후 새 궤도 시작)
+      state.pins.forEach(p => { if (p.type === 'magnet_pull') p._orbitAcc = null; });
+      SFX.shield();
+      spawnFloat(boss.x, boss.y, '\ud83d\udee1 \ub9c9\ud784!', '#60a5fa');
+    }
+    return;
+  }
+
+  const dx=b.x-boss.x, dy=b.y-boss.y;
+  const dist=Math.sqrt(dx*dx+dy*dy), minDist=b.r+boss.r;
+  if (dist < minDist && dist > 0.1 && !boss.hit) {
+    boss.hit=true; boss.hp--; boss.flashTimer=300;
+    SFX.bossHit();
+    const nx=dx/dist, ny=dy/dist;
+    b.x+=nx*(minDist-dist)*0.5; b.y+=ny*(minDist-dist)*0.5;
+    const dot=b.vx*nx+b.vy*ny; b.vx-=2*dot*nx; b.vy-=2*dot*ny;
+
+    if (boss.skills.includes('combobreak') || boss.chaosActive==='combobreak') {
+      if (state.combo > 0) {
+        const old=state.combo;
+        if (boss.hp <= Math.floor(boss.maxHp*0.4)) {
+          state.combo=0; state.fever=false; state.holeBlocked=false;
+          boss.skillLabel='\u26a1 \ucf54\uc0a4 \ucd08\uae30\ud654!'; boss.skillLabelTimer=1200;
+          spawnFloat(boss.x,boss.y+18,'\u26a1 \ucf54\uc0a4 \ucd08\uae30\ud654!','#fbbf24');
+          showNotif('\u26a1 \ucf54\uc0a4 \ucd08\uae30\ud654!','#fbbf24');
+        } else if (Math.random()<0.5) {
+          state.combo=Math.floor(old/2);
+          boss.skillLabel='\u26a1 \ucf54\uc0a4 \ubc18\uac10!'; boss.skillLabelTimer=1000;
+          spawnFloat(boss.x,boss.y+18,'\u26a1 '+old+'\u2192'+state.combo,'#fbbf24');
+          showNotif('\u26a1 \ucf54\uc0a4 \ubc18\uac10! '+old+'\u2192'+state.combo,'#fbbf24');
+        }
+        updateHUD();
+      }
+    }
+
+    if (boss.hp <= 0) {
+      boss.defeated=true;
+      SFX.bossDown();
+      b.vx=nx*14; b.vy=-Math.abs(ny*14)-4;
+      const bossBonus=boss.hpTarget||500;
+      state.chips+=bossBonus;
+      spawnFloat(boss.x,boss.y,'\ud83d\udca5 BOSS DOWN!','#f87171');
+      spawnFloat(boss.x,boss.y+28,'+'+bossBonus.toLocaleString()+'C','#fbbf24');
+      spawnFloat(boss.x,boss.y+52,'MAX BLAST!','#fbbf24');
+      showNotif('\ud83d\udca5 '+boss.name+' \ucc98\uce58! +'+bossBonus.toLocaleString()+'C','#f87171');
+      updateHUD();
+      const {finalScore:bossFs}=calcFinalScore();
+      const bossT=Math.round((STAGE_TARGETS[state.stage]||999999)*2.5);
+      if (!state.fever && bossFs>=bossT) enterFeverMode('\ud83d\udca5 \ubcf4\uc2a4 \ucc98\uce58 + \ubaa9\ud45c \ub2ec\uc131! Chips \xd7 1.5');
+    } else {
+      b.vx*=1.05; b.vy*=1.05;
+      spawnFloat(boss.x,boss.y,'HP: '+boss.hp+'/'+boss.maxHp,'#f87171');
+      bossCounterAttack(boss,b);
+    }
+    setTimeout(()=>{ if(state.boss) state.boss.hit=false; },300);
+  }
+}
+
+function drawBoss() {
+  const boss=state.boss;
+  if (!boss||boss.defeated) return;
+  const ctx2=canvas.getContext('2d');
+  const hpRatio=boss.hp/boss.maxHp;
+  const isFlash=boss.flashTimer>0;
+  const t=Date.now()/500;
+  const pulse=1+Math.sin(t)*0.06;
+  const col=boss.color||'#f87171';
+  ctx2.save();
+
+  if (boss.teleportWarn) ctx2.globalAlpha=Math.sin(Date.now()/80)>0?0.4:1.0;
+
+  if (boss.skills.includes('repulse')||boss.chaosActive==='repulse') {
+    ctx2.beginPath(); ctx2.arc(boss.x,boss.y,boss.r*5,0,Math.PI*2);
+    ctx2.strokeStyle='#fb923c44'; ctx2.lineWidth=1;
+    ctx2.setLineDash([4,4]); ctx2.stroke(); ctx2.setLineDash([]);
+  }
+
+  if (boss.shieldActive) {
+    const st2 = Date.now() / 150;
+    // 외곽 글로우 링
+    ctx2.beginPath(); ctx2.arc(boss.x, boss.y, boss.r * 2.0, 0, Math.PI * 2);
+    ctx2.strokeStyle = '#60a5fa';
+    ctx2.lineWidth = 5;
+    ctx2.globalAlpha = 0.4 + Math.sin(st2) * 0.3;
+    ctx2.stroke();
+    // 내부 채움
+    ctx2.beginPath(); ctx2.arc(boss.x, boss.y, boss.r * 1.65, 0, Math.PI * 2);
+    ctx2.fillStyle = 'rgba(96,165,250,0.18)';
+    ctx2.globalAlpha = 1.0;
+    ctx2.fill();
+    // 선명한 테두리
+    ctx2.beginPath(); ctx2.arc(boss.x, boss.y, boss.r * 1.65, 0, Math.PI * 2);
+    ctx2.strokeStyle = '#93c5fd';
+    ctx2.lineWidth = 2.5;
+    ctx2.globalAlpha = 0.9 + Math.sin(st2 * 2) * 0.1;
+    ctx2.stroke();
+    ctx2.globalAlpha = boss.teleportWarn ? (Math.sin(Date.now()/80) > 0 ? 0.4 : 1.0) : 1.0;
+  }
+
+  ctx2.beginPath(); ctx2.arc(boss.x,boss.y,boss.r*1.35,0,Math.PI*2);
+  ctx2.fillStyle=isFlash?'rgba(248,113,113,0.25)':col+'22'; ctx2.fill();
+
+  ctx2.beginPath(); ctx2.arc(boss.x,boss.y,boss.r*pulse,0,Math.PI*2);
+  ctx2.fillStyle=isFlash?'#7f1d1d':'#1a0a0a';
+  ctx2.strokeStyle=isFlash?'#fbbf24':col;
+  ctx2.lineWidth=isFlash?3:2; ctx2.fill(); ctx2.stroke();
+
+  ctx2.globalAlpha=1.0;
+  ctx2.font='bold '+Math.round(boss.r*0.72)+'px Arial';
+  ctx2.textAlign='center'; ctx2.textBaseline='middle';
+  ctx2.fillText(boss.icon,boss.x,boss.y);
+
+  const barW=boss.r*2.8, barH=8;
+  const barX=boss.x-barW/2, barY=boss.y+boss.r+10;
+  ctx2.fillStyle='#1e2533';
+  ctx2.beginPath(); ctx2.roundRect(barX,barY,barW,barH,4); ctx2.fill();
+  const hpCol=hpRatio>0.6?'#34d399':hpRatio>0.3?'#fbbf24':'#f87171';
+  ctx2.fillStyle=hpCol;
+  ctx2.beginPath(); ctx2.roundRect(barX,barY,barW*hpRatio,barH,4); ctx2.fill();
+  ctx2.strokeStyle='#374151'; ctx2.lineWidth=1;
+  ctx2.beginPath(); ctx2.roundRect(barX,barY,barW,barH,4); ctx2.stroke();
+
+  ctx2.fillStyle='#e2e8f0';
+  ctx2.font='bold 9px Space Mono, monospace';
+  ctx2.textAlign='center'; ctx2.textBaseline='alphabetic';
+  ctx2.fillText(boss.icon+' '+boss.name+'  '+boss.hp+' / '+boss.maxHp, boss.x, barY-4);
+
+  if (boss.skillLabel && boss.skillLabelTimer>0) {
+    ctx2.fillStyle='#fbbf24';
+    ctx2.font='bold 10px Space Mono, monospace';
+    ctx2.textAlign='center'; ctx2.textBaseline='alphabetic';
+    ctx2.fillText(boss.skillLabel, boss.x, barY+barH+14);
+  }
+  ctx2.restore();
+}
+
+
+
 
 function addRandomPin() {
   const W = canvas.width, H = canvas.height;
@@ -1003,7 +1470,8 @@ function spawnBall(power) {
     r: 8,
     trail: [],
     graceFrames: 20,
-    orbits: new Map(), // pinId → { lastAngle, accumulated }
+    orbits: new Map(),
+    _counterLock: 0,
   };
 }
 
@@ -1012,6 +1480,27 @@ function stepPhysics() {
   const W = canvas.width, H = canvas.height;
   const b = state.ball;
   if (!b) return;
+
+  // 반격 잠금 처리: vx=0 유지, 핀 반사 억제
+  if (b._counterLock > 0) {
+    b._counterLock--;
+    b.vx = 0; // 수평 속도 강제 0 유지
+    // 중력만 적용해서 천천히 낙하
+    b.vy += 0.18;
+    b.x += b.vx;
+    b.y += b.vy;
+    b.trail.push({x: b.x, y: b.y});
+    if (b.trail.length > 12) b.trail.shift();
+    if (b.graceFrames > 0) b.graceFrames--;
+    // 벽 반사만 허용
+    if (b.x - b.r < 0) { b.x = b.r; }
+    if (b.x + b.r > W) { b.x = W - b.r; }
+    // 잠금 해제 시 정상 속도로 복귀
+    if (b._counterLock === 0) {
+      b.vy = Math.max(b.vy, 4); // 최소 낙하 속도 보장
+    }
+    return;
+  }
 
   b.trail.push({x: b.x, y: b.y});
   if (b.trail.length > 12) b.trail.shift();
@@ -1143,6 +1632,7 @@ function stepPhysics() {
     } else {
       // 홀 진입 순간 슬로우모션 시작
       if (!state._holeSlowmo) {
+        SFX.hole();
         state._holeSlowmo = true;
         state.slowmo = true;
       }
@@ -1201,6 +1691,7 @@ function stepPhysics() {
         // vx는 반드시 오른쪽(양수) 방향으로 강제 — 왼쪽으로 거슬러 올라가는 현상 방지
         b.vx = Math.abs(nx * launchSpeed * 0.55);
         b.vy = -Math.abs(ny * launchSpeed);
+        SFX.max();
         spawnFloat(b.x, surfaceY - 14, 'MAX!', '#fbbf24');
         state.chips += 20; updateHUD();
       } else {
@@ -1237,6 +1728,7 @@ function stepPhysics() {
         // vx는 반드시 왼쪽(음수) 방향으로 강제 — 오른쪽으로 거슬러 올라가는 현상 방지
         b.vx = -Math.abs(nx * launchSpeed * 0.55);
         b.vy = -Math.abs(ny * launchSpeed);
+        SFX.max();
         spawnFloat(b.x, surfaceY - 14, 'MAX!', '#fbbf24');
         state.chips += 20; updateHUD();
       } else {
@@ -1309,36 +1801,51 @@ function stepPhysics() {
       if (p.type === 'magnet_pull') {
         const speed = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
 
-        // 방법 D: 충돌 반경의 4배 이하면 척력 전환 (범위 확대)
-        if (mdist < p.r * 4) {
-          const pushForce = Math.max(2.5, 5.0 - speed);
+        // 이미 탈출 쿨다운 중이면 인력 미적용
+        if (p._escapeCooldown > 0) {
+          p._escapeCooldown--;
+          continue;
+        }
+
+        // 근접 척력 전환 (반경 × 5로 확대)
+        if (mdist < p.r * 5) {
+          const pushForce = Math.max(3.0, 6.0 - speed);
           b.vx += nx * pushForce;
           b.vy += ny * pushForce;
-          // 척력 발동 시 누적 초기화
           if (p._orbitAcc) p._orbitAcc = null;
         } else {
-          // 방법 B: 시간 기반 탈출 — 누적 각도 추적
-          if (!p._orbitAcc) p._orbitAcc = { lastAngle: null, total: 0 };
+          if (!p._orbitAcc) p._orbitAcc = { lastAngle: null, total: 0, slowFrames: 0 };
           const curAngle = Math.atan2(mdy, mdx);
           if (p._orbitAcc.lastAngle !== null) {
             let delta = curAngle - p._orbitAcc.lastAngle;
             if (delta > Math.PI)  delta -= Math.PI * 2;
             if (delta < -Math.PI) delta += Math.PI * 2;
-            // 방향 무관하게 절댓값 누적 (진동도 카운트)
             p._orbitAcc.total += Math.abs(delta);
           }
           p._orbitAcc.lastAngle = curAngle;
 
-          if (p._orbitAcc.total >= Math.PI * 3) {
-            // 540도(1.5바퀴) 누적 — 강제 탈출
+          // 저속 카운트 (슬로우 중엔 더 빠르게 누적)
+          const slowMult = state.slowmo ? 2 : 1;
+          if (speed < 3.0) {
+            p._orbitAcc.slowFrames = (p._orbitAcc.slowFrames || 0) + slowMult;
+          } else {
+            p._orbitAcc.slowFrames = 0;
+          }
+
+          if (p._orbitAcc.total >= Math.PI * 2.5 || p._orbitAcc.slowFrames >= 20) {
+            // 450도 또는 저속 0.33초 → 강제 탈출
             p._orbitAcc = null;
-            const escapeSpeed = Math.max(6, speed * 1.5);
+            p._escapeCooldown = 30; // 탈출 후 0.5초 쿨다운
+            const escapeSpeed = Math.max(8, speed * 2.5);
+            // 반드시 위쪽으로 탈출
             b.vx = nx * escapeSpeed;
-            b.vy = ny * escapeSpeed - 3;
+            b.vy = -Math.abs(ny * escapeSpeed) - 6;
+            // 모든 인력 핀 누적 초기화
+            state.pins.forEach(q => { if (q.type === 'magnet_pull') q._orbitAcc = null; });
             spawnFloat(p.x, p.y - 18, '탈출!', '#fb923c');
           } else {
             const slowScale = state.slowmo ? 0.25 : 1.0;
-            const strength = (1 - mdist / magnetRange) * 0.7 * slowScale;
+            const strength = (1 - mdist / magnetRange) * 0.6 * slowScale;
             b.vx -= nx * strength;
             b.vy -= ny * strength;
           }
@@ -1352,15 +1859,19 @@ function stepPhysics() {
       }
     } else {
       // 범위 밖으로 나가면 누적 초기화
-      if (p.type === 'magnet_pull' && p._orbitAcc) p._orbitAcc = null;
+      if (p.type === 'magnet_pull') {
+        if (p._orbitAcc) p._orbitAcc = null;
+        if (p._escapeCooldown > 0) p._escapeCooldown--;
+      }
     }
   }
 
-  // 자력 조커 — 모든 핀에 약한 인력 적용
+  // 자력 조커 — 모든 핀에 약한 인력 적용 (인력 핀 제외 — 중첩 고착 방지)
   if (state.jokers.some(j => j.effect === 'magnet_joker')) {
     for (const p of state.pins) {
       if (!p.alive) continue;
       if (p.type === 'card' || p.type === 'mystery') continue;
+      if (p.type === 'magnet_pull') continue; // 인력 핀과 중첩 방지
       const jdx = b.x - p.x, jdy = b.y - p.y;
       const jdist = Math.sqrt(jdx*jdx + jdy*jdy);
       const jRange = p.r * 5;
@@ -1456,6 +1967,7 @@ function stepPhysics() {
         }
         const chipBonus = 80 + killed * 30;
         state.chips += chipBonus;
+        SFX.bomb();
         spawnFloat(p.x, p.y, '+' + chipBonus + 'C 폭발!', '#f87171');
         // 폭발 조커 보유 시 Mult ×2
         if (state.jokers.some(j => j.effect === 'bomb')) {
@@ -1478,7 +1990,7 @@ function stepPhysics() {
       b.vx *= 0.95;
       b.vy *= 0.95;
       if (p.type === 'spring') {
-        // 스프링 업그레이드: 튕김 배율 강화
+        SFX.spring();
         const springBounceMult = 1.6 + [0, 0.2, 0.4, 0][pinUpgrades.spring];
         b.vy = -Math.abs(b.vy) * springBounceMult;
         // 스프링: 콤보 ×2 점프
@@ -1566,6 +2078,7 @@ function getComboChips() {
 function onNormalHit(p) {
   const now = Date.now();
   const elapsed = now - state.comboTimer;
+  SFX.pinHit();
 
   if (elapsed < COMBO_TIMEOUT && state.comboTimer > 0) {
     state.combo++;
@@ -1573,13 +2086,21 @@ function onNormalHit(p) {
     state.combo = 1;
   }
   state.comboTimer = now;
+  if (state.combo % 5 === 0) SFX.combo(state.combo);
 
   // 피버 모드 진입/유지
   const wasFever = state.fever;
   state.fever = state.combo >= 20;
   if (state.combo >= 20 && !wasFever) {
-    enterFeverMode('Chips × 1.5');
-    return; // 피버 인트로 중 이후 처리는 재개 후 자연히 진행
+    // 보스 라운드에서 보스가 살아있으면 콤보 피버 진입 차단
+    const bossAlive = state.roundIdx === 2 && state.boss && !state.boss.defeated;
+    if (!bossAlive) {
+      enterFeverMode('Chips × 1.5');
+      return;
+    } else {
+      // 피버 상태는 false로 유지 (보스 처치 전까지)
+      state.fever = false;
+    }
   }
 
   // Chips 계산 (일반 핀 업그레이드 반영)
@@ -1739,10 +2260,11 @@ function enterFeverMode(label) {
   state.fever = true;
   state.combo = Math.max(state.combo, 20);
   state.comboTimer = Date.now();
+  SFX.fever();
 
-  // 콤보 달성 피버만 홀 차단 (목표 초과 피버는 홀 유지)
-  const isTargetFever = label && label.includes('목표');
-  const isComboFever  = !isTargetFever;
+  const isTargetFever = label && label.includes('목표') && !label.includes('보스');
+  const isBossFever   = label && label.includes('보스');
+  const isComboFever  = !isTargetFever && !isBossFever;
   if (isComboFever) {
     state.holeBlocked = true;
     spawnFloat(canvas.width/2, canvas.height * 0.75, '🚫 홀 차단!', '#f87171');
@@ -1761,6 +2283,7 @@ function enterFeverMode(label) {
   intro.style.display = 'flex';
 
   if (isTargetFever) {
+    showNotif('🎯 목표 달성! FEVER MODE', '#f87171');
     // 2단계 연출: 클리어 → 피버
     // 1단계: CLEAR 표시 (0.8초)
     if (clearStage) clearStage.style.display = 'flex';
@@ -1782,8 +2305,43 @@ function enterFeverMode(label) {
         state.comboTimer = Date.now();
       }, 800);
     }, 800);
+  } else if (isBossFever) {
+    // 보스 처치 피버: BOSS DOWN → FEVER 2단계
+    showNotif('💥 BOSS DOWN! FEVER MODE', '#f87171');
+    if (clearStage) {
+      clearStage.style.display = 'flex';
+      const titleEl = clearStage.querySelector('div');
+      if (titleEl) titleEl.textContent = '보스 처치';
+      const bigEl = clearStage.querySelector('div:nth-child(2)');
+    }
+    if (feverStage) feverStage.style.display = 'none';
+    if (clearScore) {
+      const { finalScore } = calcFinalScore();
+      clearScore.textContent = finalScore.toLocaleString() + ' pts';
+    }
+    // 클리어 스테이지 텍스트 임시 변경
+    const clearTitleEl = document.querySelector('#fever-clear-stage div:first-child');
+    const clearBigEl   = document.querySelector('#fever-clear-stage .clearPulse, #fever-clear-stage div:nth-child(2)');
+    if (clearTitleEl) clearTitleEl.textContent = '보스 처치';
+    if (clearBigEl)   clearBigEl.textContent   = '💥 BOSS DOWN!';
+    setTimeout(() => {
+      if (clearStage) clearStage.style.display = 'none';
+      if (feverStage) feverStage.style.display = 'flex';
+      if (sub) sub.textContent = 'Chips × 1.5  |  6장 족보 활성화';
+      setTimeout(() => {
+        intro.style.display = 'none';
+        if (clearStage) clearStage.style.display = 'none';
+        if (feverStage) feverStage.style.display = 'none';
+        // 원래 텍스트 복원
+        if (clearTitleEl) clearTitleEl.textContent = '목표 달성';
+        if (clearBigEl)   clearBigEl.textContent   = '🎯 CLEAR!';
+        state.phase = 'fly';
+        state.comboTimer = Date.now();
+      }, 800);
+    }, 800);
   } else {
     // 콤보 피버: 기존 1단계 연출
+    showNotif('🔥 FEVER MODE!', '#f87171');
     if (clearStage) clearStage.style.display = 'none';
     if (feverStage) feverStage.style.display = 'flex';
     if (sub) sub.textContent = label || 'Chips × 1.5';
@@ -1806,6 +2364,7 @@ function triggerOrbital(p, b) {
   p.alive = true;
   spawnFloat(p.x, p.y - 24, '🌀 ORBITAL!', '#fbbf24');
   spawnFloat(p.x, p.y, 'COMBO +5', '#c084fc');
+  showNotif('🌀 ORBITAL! COMBO +5', '#c084fc');
 
   // 스타 핀 생성 즉시 슬로우 — nearStar 감지 딜레이 없이 바로 적용
   state._starSlowmo = true;
@@ -1828,11 +2387,8 @@ function triggerOrbital(p, b) {
 }
 let notifTimer;
 function showCardNotif(text) {
-  const el = document.getElementById('card-notif');
-  el.textContent = '카드 획득! ' + text;
-  el.classList.add('show');
-  clearTimeout(notifTimer);
-  notifTimer = setTimeout(() => el.classList.remove('show'), 1200);
+  SFX.card();
+  showNotif('카드 획득! ' + text, '#60a5fa');
 }
 
 // --- FLOATING TEXT ---
@@ -1864,6 +2420,18 @@ function spawnFloat(x, y, text, color) {
     else el.remove();
   }
   raf = requestAnimationFrame(anim);
+}
+
+// --- HAND NOTIF (덱보기 왼쪽 가운데 고정 알림) ---
+let _notifTimer = null;
+function showNotif(text, color) {
+  const el = document.getElementById('hand-notif');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = color || '#60a5fa';
+  el.style.opacity = '1';
+  clearTimeout(_notifTimer);
+  _notifTimer = setTimeout(() => { el.style.opacity = '0'; }, 2000);
 }
 
 // --- HAND RENDER ---
@@ -2070,11 +2638,14 @@ function updateHUD() {
   document.getElementById('stage-pct').textContent = finalScore.toLocaleString() + ' / ' + target.toLocaleString();
 
   // 목표 초과 시 피버 강제 진입 + HUD 금색
+  const isBossRoundFever = state.roundIdx === 2 && state.boss;
   if (state.phase === 'fly' && finalScore >= target) {
     if (scoreVal) scoreVal.style.color = '#fbbf24';
-    if (!state.fever) {
+    if (!state.fever && !isBossRoundFever) {
+      // 일반 라운드: 목표 달성 시 피버
       enterFeverMode('🎯 목표 달성!  Chips × 1.5');
     }
+    // 보스 라운드는 점수 달성만으로 피버 진입 안 함 — 보스 처치 시 진입
   }
 }
 
@@ -2133,20 +2704,52 @@ function triggerResult() {
   const roundMult2 = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
   const target = Math.round((STAGE_TARGETS[state.stage] || 999999) * roundMult2);
 
-  if (finalScore >= target) {
-    state.phase = 'result';
-    updateRunScore(state.stage, finalScore);
-    showResultScreen('clear', finalScore, target);
-    return;
-  }
+  const TEST_MODE = true; // 테스트 모드: 3턴 종료 시 무조건 클리어
+  const isBossRound = state.roundIdx === 2 && state.boss;
 
-  if (state.turn >= 3) {
-    state.phase = 'result';
-    // 게임오버 — 현재 스테이지 점수도 기록 후 패널 표시
-    updateRunScore(state.stage, finalScore);
-    const newBests = flushRunToRecords();
-    showResultScreen('gameover', finalScore, target, newBests);
-    return;
+  // 테스트 모드: 점수/보스 무관하게 목표 점수 달성 또는 3턴 소진 시 클리어
+  if (TEST_MODE) {
+    if (finalScore >= target || state.turn >= 3) {
+      state.phase = 'result';
+      updateRunScore(state.stage, finalScore);
+      SFX.clear();
+      showResultScreen('clear', finalScore, target);
+      return;
+    }
+  } else if (isBossRound) {
+    // 보스 라운드: 목표 점수 달성 AND 보스 처치 둘 다 필요
+    const scoreOk = finalScore >= target;
+    const bossOk  = state.boss.defeated;
+    if (scoreOk && bossOk) {
+      state.phase = 'result';
+      updateRunScore(state.stage, finalScore);
+      SFX.clear();
+      showResultScreen('clear', finalScore, target);
+      return;
+    }
+    if (state.turn >= 3) {
+      state.phase = 'result';
+      updateRunScore(state.stage, finalScore);
+      const newBests = flushRunToRecords();
+      showResultScreen('gameover', finalScore, target, newBests);
+      return;
+    }
+  } else {
+    // 일반 라운드: 목표 점수 달성만으로 클리어
+    if (finalScore >= target) {
+      state.phase = 'result';
+      updateRunScore(state.stage, finalScore);
+      SFX.clear();
+      showResultScreen('clear', finalScore, target);
+      return;
+    }
+    if (state.turn >= 3) {
+      state.phase = 'result';
+      updateRunScore(state.stage, finalScore);
+      const newBests = flushRunToRecords();
+      showResultScreen('gameover', finalScore, target, newBests);
+      return;
+    }
   }
 
   // 턴 증가 후 바로 재발사 준비 (결과화면 없음)
@@ -2156,7 +2759,7 @@ function triggerResult() {
   consecutiveHits = 0;
   state.holeBlocked = false;
   // 핀 orbital / _orbitAcc 플래그 초기화 — 다음 턴에서 재발동 가능
-  state.pins.forEach(p => { p.orbital = false; p._orbitAcc = null; p._baseType = null; p._starAcc = null; });
+  state.pins.forEach(p => { p.orbital = false; p._orbitAcc = null; p._baseType = null; p._starAcc = null; p._escapeCooldown = 0; });
   state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
   updateTurnDots();
   updateHUD();
@@ -2469,6 +3072,9 @@ function draw() {
     ctx.fillText((Math.abs(deg)) + '° ' + sign, labelX, labelY);
   }
 
+  // boss
+  drawBoss();
+
   // pins
   for (const p of state.pins) {
     if (!p.alive) continue;
@@ -2772,6 +3378,7 @@ function loop(ts) {
   }
 
   if ((state.phase === 'fly' || state.phase === 'slowmo_fall') && state.ball) {
+    stepBoss();
     stepPhysics();
   }
 
@@ -2781,42 +3388,40 @@ function loop(ts) {
     if (state.chargeVal <= 0)   { state.chargeVal = 0;   state.chargeDir =  1; }
   }
 
-  // C: 콤보 타이머 바 + 카운터 UI 업데이트
-  const comboUi = document.getElementById('combo-ui');
-  if (comboUi) {
-    if (state.combo > 0 && state.phase === 'fly') {
-      comboUi.style.display = 'block';
-      const elapsed = Date.now() - state.comboTimer;
-      const timerPct = Math.max(0, 1 - elapsed / 1500);
-      const bar = document.getElementById('combo-timer-bar');
-      const lbl = document.getElementById('combo-label');
-      if (bar) {
-        bar.style.width = (timerPct * 100) + '%';
-        // 색상: 일반=파랑, 핫=보라, 피버=빨강
-        bar.style.background = state.fever ? '#f87171' : state.combo >= 10 ? '#fbbf24' : state.combo >= 5 ? '#c084fc' : '#60a5fa';
-      }
-      if (lbl) {
-        const stage = state.fever ? '🔥 FEVER' : state.combo >= 10 ? '🔥 HOT' : state.combo >= 5 ? '⚡ COMBO' : 'COMBO';
-        lbl.textContent = (stage || 'COMBO') + ' ×' + state.combo;
-        lbl.style.color = state.fever ? '#f87171' : state.combo >= 10 ? '#fbbf24' : state.combo >= 5 ? '#c084fc' : '#60a5fa';
-      }
-      // 타이머 만료 시 콤보 초기화 (단, 목표 초과 피버 중엔 유지)
-      if (timerPct <= 0 && state.combo > 0) {
-        const roundMult3 = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
-        const target3 = Math.round((STAGE_TARGETS[state.stage] || 999999) * roundMult3);
-        const { finalScore: fs3 } = calcFinalScore();
-        if (fs3 >= target3) {
-          // 목표 초과 피버 — 콤보 타이머 연장, 피버 유지
-          state.comboTimer = Date.now();
-        } else {
-          state.combo = 0; state.fever = false; state.holeBlocked = false;
-          comboUi.style.display = 'none';
-          updateHUD();
-        }
-      }
-    } else {
-      comboUi.style.display = 'none';
+  // C: 콤보 타이머 바 + 카운터 UI 업데이트 (hand-meta 왼쪽)
+  const comboBarWrap = document.getElementById('combo-bar-wrap');
+    const bar = document.getElementById('combo-timer-bar');
+  const lbl = document.getElementById('combo-label');
+
+  if (state.combo > 0 && state.phase === 'fly') {
+    if (comboBarWrap) comboBarWrap.style.display = 'flex';
+  
+    const elapsed = Date.now() - state.comboTimer;
+    const timerPct = Math.max(0, 1 - elapsed / 1500);
+    const col = state.fever ? '#f87171' : state.combo >= 10 ? '#fbbf24' : state.combo >= 5 ? '#c084fc' : '#60a5fa';
+
+    if (bar) { bar.style.width = (timerPct * 100) + '%'; bar.style.background = col; }
+    if (lbl) {
+      const stage = state.fever ? '🔥 FEVER' : state.combo >= 10 ? '🔥 HOT' : state.combo >= 5 ? '⚡ COMBO' : 'COMBO';
+      lbl.textContent = stage + ' ×' + state.combo;
+      lbl.style.color = col;
     }
+
+    // 타이머 만료 시 콤보 초기화
+    if (timerPct <= 0 && state.combo > 0) {
+      const roundMult3 = [1.0, 1.5, 2.5][state.roundIdx] || 1.0;
+      const target3 = Math.round((STAGE_TARGETS[state.stage] || 999999) * roundMult3);
+      const { finalScore: fs3 } = calcFinalScore();
+      if (fs3 >= target3) {
+        state.comboTimer = Date.now();
+      } else {
+        state.combo = 0; state.fever = false; state.holeBlocked = false;
+        if (comboBarWrap) comboBarWrap.style.display = 'none';
+            updateHUD();
+      }
+    }
+  } else {
+    if (comboBarWrap) comboBarWrap.style.display = 'none';
   }
 
   draw();
@@ -2844,8 +3449,8 @@ function doLaunch() {
   if (state.phase !== 'aim') return;
   state.charging = false;
   const power = 30 + state.chargeVal * 0.7;
-  // reset bar
   state.aimAngle = clampAngle(state.aimAngle);
+  SFX.launch();
   spawnBall(power);
   state.phase = 'fly';
 }
@@ -3000,6 +3605,7 @@ function resetGame() {
   state.turn = 1;
   state.totalChipsBank = 0;
   state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
+  state.boss = null;
   shopState.coins = 4; shopState.rerollCost = 5;
   Object.keys(planetBonus).forEach(k => delete planetBonus[k]);
   pinUpgrades.normal = 0; pinUpgrades.spring = 0; pinUpgrades.card = 0; pinUpgrades.spring_add = 0; pinUpgrades.max_box = 0;
@@ -3018,6 +3624,7 @@ function resetRound() {
   state.turn = 1;
   state.totalChipsBank = 0;
   state.combo = 0; state.comboTimer = 0; state.fever = false; state.holeBlocked = false; state.slowmo = false; state._starSlowmo = false; state._holeSlowmo = false;
+  initBoss(); // 보스 라운드면 보스 초기화
   updateDeckBtn(); renderJokerPanel(); renderConsumablePanel(); updateTurnDots();
   resize(); renderHand(); updateHUD();
 }
@@ -3073,14 +3680,71 @@ function renderJokerPanel() {
     panel.innerHTML = '<div style="font-size:10px;color:var(--muted);width:100%;padding:2px 0" id="joker-empty-msg">조커 없음 — 상점에서 구매하세요</div>';
     return;
   }
-  state.jokers.forEach(j => {
+  state.jokers.forEach((j, idx) => {
     const chip = document.createElement('div');
     chip.className = 'joker-chip active';
-    // live value display for stackable jokers
+    chip.style.cssText = 'position:relative;padding-right:28px;';
     let valText = j.desc;
     if (j.effect === 'combo')    valText = '3연속 +4M  누적: +' + state.jokerMult;
     if (j.effect === 'heart')    valText = '하트 +5M  누적: +' + (state.heartHits * 5);
+    // 판매가: 구매가 절반 (최소 $1)
+    const sellPrice = Math.max(1, Math.floor((j.price || 5) / 2));
     chip.innerHTML = `<span class="jn">${j.name}</span><span class="je">${valText}</span>`;
+    // 판매 버튼
+    const sellBtn = document.createElement('button');
+    sellBtn.textContent = '$' + sellPrice;
+    sellBtn.title = '판매 (+$' + sellPrice + ')';
+    sellBtn.style.cssText = [
+      'position:absolute', 'top:50%', 'right:4px', 'transform:translateY(-50%)',
+      'background:#1e2533', 'border:1px solid #4b5563', 'border-radius:3px',
+      'color:#6b7280', 'font-size:9px', 'font-family:Space Mono,monospace',
+      'padding:1px 4px', 'cursor:pointer', 'line-height:1.4',
+    ].join(';');
+    sellBtn.addEventListener('mouseenter', () => {
+      sellBtn.style.borderColor = '#f87171';
+      sellBtn.style.color = '#f87171';
+    });
+    sellBtn.addEventListener('mouseleave', () => {
+      sellBtn.style.borderColor = '#4b5563';
+      sellBtn.style.color = '#6b7280';
+    });
+    sellBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // 이미 확인 버튼이 있으면 제거
+      const existing = chip.querySelector('.sell-confirm');
+      if (existing) { existing.remove(); return; }
+      // 인라인 확인 UI 표시
+      const confirmEl = document.createElement('div');
+      confirmEl.className = 'sell-confirm';
+      confirmEl.style.cssText = [
+        'position:absolute', 'right:0', 'top:0', 'bottom:0',
+        'display:flex', 'align-items:center', 'gap:3px',
+        'background:#0a0d14', 'border-left:1px solid #374151',
+        'padding:0 5px', 'border-radius:0 6px 6px 0',
+        'z-index:10',
+      ].join(';');
+      confirmEl.innerHTML = `
+        <span style="font-size:9px;color:#6b7280;font-family:Space Mono,monospace">판매?</span>
+        <button class="sell-ok" style="background:#7f1d1d;border:1px solid #f87171;border-radius:3px;color:#f87171;font-size:9px;padding:1px 5px;cursor:pointer;font-family:Space Mono,monospace">✓ $${sellPrice}</button>
+        <button class="sell-no" style="background:#1e2533;border:1px solid #4b5563;border-radius:3px;color:#6b7280;font-size:9px;padding:1px 5px;cursor:pointer;font-family:Space Mono,monospace">✕</button>
+      `;
+      confirmEl.querySelector('.sell-ok').addEventListener('click', (e2) => {
+        e2.stopPropagation();
+        state.jokers.splice(idx, 1);
+        shopState.coins += sellPrice;
+        spawnFloat(canvas.width/2, canvas.height*0.5, j.name + ' 판매 +$' + sellPrice, '#6b7280');
+        renderJokerPanel();
+        updateHUD();
+        const coinEl = document.getElementById('shop-coins');
+        if (coinEl) coinEl.textContent = shopState.coins;
+      });
+      confirmEl.querySelector('.sell-no').addEventListener('click', (e2) => {
+        e2.stopPropagation();
+        confirmEl.remove();
+      });
+      chip.appendChild(confirmEl);
+    });
+    chip.appendChild(sellBtn);
     panel.appendChild(chip);
   });
 }
@@ -3384,7 +4048,7 @@ function buyItem(key, item, elId, i) {
       renderShop();
       return;
     }
-    state.jokers.push({ name: item.name, effect: item.effect, desc: item.desc });
+    state.jokers.push({ name: item.name, effect: item.effect, desc: item.desc, price: item.price });
     // immediate one-time effects
     if (item.effect === 'heart') {
       // will trigger on next heart hit — no immediate bonus
