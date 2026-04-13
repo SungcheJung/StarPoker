@@ -3308,27 +3308,9 @@ function drawFeverIntro() {
           spawnFloat(state.ball.x, state.ball.y - 30, '×' + cnt + ' 분열!', '#fbbf24');
         }
         state._pendingBallCount = 0;
-        // 피버 HTML 오버레이 표시 후 게임 재개
-        const feverDuration = fi.blockMs;
-        const intro = document.getElementById('fever-intro');
-        const feverStage = document.getElementById('fever-fever-stage');
-        const clearStage = document.getElementById('fever-clear-stage');
-        const sub = document.getElementById('fever-sub');
-        if (intro) {
-          intro.style.display = 'flex';
-          if (clearStage) clearStage.style.display = 'none';
-          if (feverStage) feverStage.style.display = 'flex';
-          if (sub) sub.textContent = 'Chips × 1.5  |  ' + (feverDuration/1000).toFixed(0) + '초';
-          setTimeout(() => {
-            if (intro) intro.style.display = 'none';
-            state.phase = 'fly';
-            state._handFeverEndTime = Date.now() + feverDuration;
-            console.log('[피버시작] 남은=', feverDuration, 'ms');
-          }, 800);
-        } else {
-          state.phase = 'fly';
-          state._handFeverEndTime = Date.now() + feverDuration;
-        }
+        state.phase = 'fly';
+        state._handFeverEndTime = Date.now() + fi.blockMs;
+        console.log('[피버시작] 남은=', fi.blockMs, 'ms');
       },
     };
     return;
