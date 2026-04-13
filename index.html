@@ -3442,22 +3442,52 @@ function triggerHandScore(p) {
   const blockMs = HAND_FEVER_TIME[best.name] || 0;
   const handSize = ['풀 플러시','더블 스트레이트','트리플 트리플','더블 풀하우스'].includes(best.name) ? 6 : 5;
 
-  // 피버 모드 중이면 점수만 획득
+  // 피버 모드 중 → 점수 획득 + 공 추가 생성 + 피버 연장
   if (state.fever || (state._feverIntro && state._feverIntro.isHand)) {
     const pb2 = planetBonus[best.name] || {chips:0, mult:0};
     const hc2 = best.chips + pb2.chips;
     const hm2 = best.mult + pb2.mult;
     const hs2 = Math.round(hc2 * hm2 * best.xmult);
+    state.chips += hc2;
+
     if (best.name !== '하이카드') {
-      spawnFloat(px, py - 20, best.name + ' +' + hs2.toLocaleString(), '#94a3b8');
+      spawnFloat(px, py - 20, best.name + ' +' + hs2.toLocaleString(), '#fbbf24');
     }
-    // 사용 카드 제거 (6장 족보 포함)
+
+    // 공 추가 생성 (족보별 추가 공 수만큼)
+    const addCount = HAND_BALL_COUNT[best.name] || 0;
+    if (addCount > 1 && state.ball) {
+      const speed = 18;
+      const spread = Math.PI * 0.75;
+      const newBalls = [];
+      for (let i = 1; i < addCount; i++) {
+        const t = addCount > 2 ? (i-1)/(addCount-2) : 0.5;
+        const angle = -Math.PI/2 - spread/2 + spread * t;
+        newBalls.push({
+          x: state.ball.x + (Math.random()-0.5)*20,
+          y: state.ball.y + (Math.random()-0.5)*20,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          r: 8, trail: [], graceFrames: 15,
+        });
+      }
+      state.extraBalls.push(...newBalls);
+      spawnFloat(px, py - 45, '+' + (addCount-1) + '공!', '#f87171');
+    }
+
+    // 피버 시간 연장
+    if (blockMs > 0 && state._handFeverEndTime > 0) {
+      state._handFeverEndTime = Math.max(state._handFeverEndTime, Date.now()) + blockMs;
+      spawnFloat(px, py - 60, '⏱ +' + (blockMs/1000).toFixed(0) + 's', '#34d399');
+    }
+
+    // 사용 카드 제거
     const usedFast = getCombinations(hand, handSize).reduce((acc, combo) => {
       const h = handSize === 6 ? evalSpecialHand6(combo) : getBestHand(combo);
       if (h && h.name === best.name) return acc || combo; return acc;
     }, null) || hand.slice(0, handSize);
     state.hand = hand.filter(c => !usedFast.includes(c));
-    renderHand(); return; // updateHUD 호출 안 함 (피버 재트리거 방지)
+    renderHand(); return;
   }
 
   // 최적 조합 카드 찾기 (6장 or 5장)
