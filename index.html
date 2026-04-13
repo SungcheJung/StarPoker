@@ -3608,6 +3608,48 @@ function stepExtraBalls() {
       }
     }
 
+    // 보스 타격
+    const boss = state.boss;
+    if (boss && !boss.defeated) {
+      if (boss.shieldActive) {
+        const bdx = b.x-boss.x, bdy = b.y-boss.y;
+        const bdist = Math.sqrt(bdx*bdx+bdy*bdy), minD = b.r+boss.r*1.1;
+        if (bdist < minD && bdist > 0.1) {
+          const nx=bdx/bdist, ny=bdy/bdist;
+          b.x+=nx*(minD-bdist); b.y+=ny*(minD-bdist);
+          const dot=b.vx*nx+b.vy*ny;
+          b.vx-=2*dot*nx; b.vy-=2*dot*ny;
+        }
+      } else {
+        const bdx=b.x-boss.x, bdy=b.y-boss.y;
+        const bdist=Math.sqrt(bdx*bdx+bdy*bdy), minDist=b.r+boss.r;
+        if (bdist < minDist && bdist > 0.1 && !b._bossHit) {
+          b._bossHit = true;
+          boss.hp--; boss.flashTimer=300;
+          SFX.bossHit();
+          const nx=bdx/bdist, ny=bdy/bdist;
+          b.x+=nx*(minDist-bdist)*0.5; b.y+=ny*(minDist-bdist)*0.5;
+          const dot=b.vx*nx+b.vy*ny;
+          b.vx-=2*dot*nx; b.vy-=2*dot*ny;
+          if (boss.hp <= 0) {
+            boss.defeated=true; SFX.bossDown();
+            const bossBonus=boss.hpTarget||500;
+            state.chips+=bossBonus;
+            spawnFloat(boss.x,boss.y,'💥 BOSS DOWN!','#f87171');
+            spawnFloat(boss.x,boss.y+28,'+'+bossBonus.toLocaleString()+'C','#fbbf24');
+            showNotif('💥 '+boss.name+' 처치! +'+bossBonus.toLocaleString()+'C','#f87171');
+            updateHUD();
+            const {finalScore:bossFs}=calcFinalScore();
+            const bossT=Math.round((STAGE_TARGETS[state.stage]||999999)*2.5);
+            if (!state.fever && bossFs>=bossT) enterFeverMode('💥 보스 처치 + 목표 달성! Chips × 1.5');
+          } else {
+            spawnFloat(boss.x,boss.y,'HP: '+boss.hp+'/'+boss.maxHp,'#f87171');
+          }
+          setTimeout(()=>{ b._bossHit=false; },300);
+        }
+      }
+    }
+
     // 바닥 처리 — 홀 위에서는 낙하, 바깥에서는 튕김
     const distToHole = Math.abs(b.x - holeX);
     if (distToHole >= holeR && b.y + b.r >= floorY) {
