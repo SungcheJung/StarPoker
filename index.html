@@ -3522,49 +3522,75 @@ function stepExtraBalls() {
 
   state.extraBalls = state.extraBalls.filter(b => {
     // 중력
-    b.vy += 0.28;
-    b.vx *= 0.995;
+    b.vy += 0.18;
 
-    b.x += b.vx;
-    b.y += b.vy;
+    // 속도 제한 (최대 18)
+    const spd = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+    if (spd > 18) { b.vx *= 18/spd; b.vy *= 18/spd; }
 
-    // 좌우 벽 반사
-    if (b.x - b.r < 0)  { b.x = b.r + 1;     b.vx =  Math.abs(b.vx) * 0.6; }
-    if (b.x + b.r > W)  { b.x = W - b.r - 1;  b.vx = -Math.abs(b.vx) * 0.6; }
-    if (b.y - b.r < 0)  { b.y = b.r + 1;      b.vy =  Math.abs(b.vy) * 0.5; }
+    // 서브스텝 이동
+    const steps = Math.max(1, Math.ceil(spd / b.r));
+    const sdx = b.vx / steps, sdy = b.vy / steps;
+    for (let s = 0; s < steps; s++) {
+      b.x += sdx; b.y += sdy;
 
-    // 핀 충돌 — 카드/미스터리핀은 카드 획득, 나머지는 반사만
-    for (const p of state.pins) {
-      if (!p.alive) continue;
-      const pdx = b.x - p.x, pdy = b.y - p.y;
-      const dist = Math.sqrt(pdx*pdx + pdy*pdy);
-      if (dist < b.r + p.r + 1) {
-        const nx = pdx/dist, ny = pdy/dist;
-        b.x = p.x + nx * (b.r + p.r + 1);
-        b.y = p.y + ny * (b.r + p.r + 1);
-        const dot = b.vx*nx + b.vy*ny;
-        b.vx -= 2*dot*nx * 0.7;
-        b.vy -= 2*dot*ny * 0.7;
-        // 카드/미스터리핀: 카드 획득
-        if ((p.type === 'card' || p.type === 'mystery') && !p.hit) {
-          p.hit = true;
-          onCardHit(p);
-          respawnCardPin(p);
-          setTimeout(() => { p.hit = false; }, 400);
+      // 좌우 벽
+      if (b.x - b.r < 0)  { b.x = b.r + 1;     b.vx =  Math.abs(b.vx); }
+      if (b.x + b.r > W)  { b.x = W - b.r - 1;  b.vx = -Math.abs(b.vx); }
+      // 위쪽 벽
+      if (b.y - b.r < 0)  { b.y = b.r + 1;      b.vy =  Math.abs(b.vy); }
+
+      // 핀 충돌 — 에너지 유지하며 반사
+      for (const p of state.pins) {
+        if (!p.alive) continue;
+        const pdx = b.x - p.x, pdy = b.y - p.y;
+        const dist = Math.sqrt(pdx*pdx + pdy*pdy);
+        if (dist < b.r + p.r + 1 && dist > 0) {
+          const nx = pdx/dist, ny = pdy/dist;
+          b.x = p.x + nx * (b.r + p.r + 1);
+          b.y = p.y + ny * (b.r + p.r + 1);
+          const dot = b.vx*nx + b.vy*ny;
+          b.vx -= 2 * dot * nx;
+          b.vy -= 2 * dot * ny;
+          // 최소 반사 속도 보장
+          const spd2 = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+          if (spd2 < 6) { b.vx *= 6/spd2; b.vy *= 6/spd2; }
+          // 핀 타입별 처리 (hit 쿨다운으로 중복 방지)
+          if (!p.hit) {
+            p.hit = true;
+            if (p.type === 'card' || p.type === 'mystery') {
+              onCardHit(p);
+              respawnCardPin(p);
+              setTimeout(() => { p.hit = false; }, 400);
+            } else if (p.type === 'spring') {
+              const boost = 1.8;
+              b.vx *= boost; b.vy *= boost;
+              onNormalHit(p);
+              setTimeout(() => { p.hit = false; }, 300);
+            } else if (p.type === 'normal' || p.type === 'bomb' || p.type === 'star') {
+              onNormalHit(p);
+              setTimeout(() => { p.hit = false; }, 300);
+            } else {
+              setTimeout(() => { p.hit = false; }, 300);
+            }
+          }
         }
       }
     }
 
-    // 홀 반경 밖에서만 바닥 충돌
+    // 바닥 처리 — 홀 위에서는 낙하, 바깥에서는 튕김
     const distToHole = Math.abs(b.x - holeX);
-    const overHole = distToHole < holeR;
-
-    if (!overHole && b.y + b.r >= floorY) {
+    if (distToHole >= holeR && b.y + b.r >= floorY) {
       b.y = floorY - b.r;
-      b.vy = 0;
-      const dir = holeX > b.x ? 1 : -1;
-      b.vx += dir * 0.5;
-      b.vx *= 0.90;
+      // 속도가 느리면 홀 방향으로 굴러들어감, 빠르면 튕김
+      if (Math.abs(b.vy) < 4) {
+        b.vy = 0;
+        const dir = holeX > b.x ? 1 : -1;
+        b.vx += dir * 0.5;
+        b.vx *= 0.90;
+      } else {
+        b.vy = -Math.abs(b.vy) * 0.7;
+      }
     }
 
     // 화면 아래로 나가면 제거
